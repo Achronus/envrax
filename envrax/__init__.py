@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-from envrax.base import Array, EnvParams, EnvState, JaxEnv, PRNGKey
+from envrax.base import EnvParams, EnvState, JaxEnv
 from envrax.registry import make, register, registered_names
 from envrax.spaces import Box, Discrete, Space
 from envrax.wrappers import (
@@ -33,7 +33,6 @@ from envrax.wrappers import (
 )
 
 __all__ = [
-    "Array",
     "Box",
     "ClipReward",
     "Discrete",
@@ -47,7 +46,6 @@ __all__ = [
     "GrayscaleObservation",
     "JaxEnv",
     "NormalizeObservation",
-    "PRNGKey",
     "RecordEpisodeStatistics",
     "RecordVideo",
     "ResizeObservation",

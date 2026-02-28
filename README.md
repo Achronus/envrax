@@ -213,8 +213,6 @@ env = FrameStackObservation(env, n_stack=4)
 | `EnvState` | `chex.dataclass` — `step: int32`, `done: bool`. Extend to add game-specific fields. |
 | `EnvParams` | `chex.dataclass` — `max_steps: int = 1000`. Extend to add game-specific config. |
 | `JaxEnv` | Abstract base. Implement `reset`, `step`, `observation_space`, `action_space`. |
-| `PRNGKey` | Type alias for `chex.PRNGKey`. |
-| `Array` | Type alias for `jnp.ndarray`. |
 
 ### Spaces (`envrax.spaces`)
 

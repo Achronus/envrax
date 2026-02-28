@@ -35,12 +35,12 @@ class EnvState:
     ----------
     step : jnp.int32
         Current timestep within the episode.
-    done : chex.chex.Array
+    done : chex.Array
         bool scalar — episode termination flag.
     """
 
     step: jnp.int32
-    done: chex.chex.Array
+    done: chex.Array
 
 
 @chex.dataclass
