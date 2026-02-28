@@ -201,3 +201,113 @@ class TestVmapEnv:
         assert obs.shape == (4, 4, 4, 3)
         assert rewards.shape == (4,)
         assert dones.shape == (4,)
+
+
+class TestJitCompile:
+    def test_jit_reset(self):
+        env = _PixelEnv()
+        obs, state = jax.jit(env.reset)(_RNG, _PARAMS)
+        assert obs.shape == (4, 4, 3)
+
+    def test_jit_step(self):
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, _PARAMS)
+        obs, _, reward, done, _ = jax.jit(env.step)(_RNG, state, jnp.int32(0), _PARAMS)
+        assert obs.shape == (4, 4, 3)
+        assert reward.dtype == jnp.float32
+
+    def test_jit_wrapped_env(self):
+        env = GrayscaleObservation(_PixelEnv())
+        obs, state = jax.jit(env.reset)(_RNG, _PARAMS)
+        obs2, _, _, _, _ = jax.jit(env.step)(_RNG, state, jnp.int32(0), _PARAMS)
+        assert obs.shape == (4, 4)
+        assert obs2.shape == (4, 4)
+
+
+class TestScanRollout:
+    def test_scan_rollout(self):
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, _PARAMS)
+
+        def step_fn(carry, _):
+            state, rng = carry
+            rng, step_rng = jax.random.split(rng)
+            obs, new_state, reward, done, _ = env.step(
+                step_rng, state, jnp.int32(0), _PARAMS
+            )
+            return (new_state, rng), (obs, reward, done)
+
+        (_, _), (obs_seq, reward_seq, done_seq) = jax.lax.scan(
+            step_fn, (state, _RNG), None, length=5
+        )
+        assert obs_seq.shape == (5, 4, 4, 3)
+        assert reward_seq.shape == (5,)
+        assert done_seq.shape == (5,)
+
+    def test_scan_wrapped_env(self):
+        env = GrayscaleObservation(_PixelEnv())
+        _, state = env.reset(_RNG, _PARAMS)
+
+        def step_fn(carry, _):
+            state, rng = carry
+            rng, step_rng = jax.random.split(rng)
+            obs, new_state, reward, done, _ = env.step(
+                step_rng, state, jnp.int32(0), _PARAMS
+            )
+            return (new_state, rng), obs
+
+        (_, _), obs_seq = jax.lax.scan(step_fn, (state, _RNG), None, length=5)
+        assert obs_seq.shape == (5, 4, 4)
+
+
+class TestDeterminism:
+    def test_reset_same_key_same_obs(self):
+        env = _PixelEnv()
+        obs1, _ = env.reset(_RNG, _PARAMS)
+        obs2, _ = env.reset(_RNG, _PARAMS)
+        assert jnp.array_equal(obs1, obs2)
+
+    def test_step_same_key_same_output(self):
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, _PARAMS)
+        obs1, _, r1, d1, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        obs2, _, r2, d2, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        assert jnp.array_equal(obs1, obs2)
+        assert jnp.array_equal(r1, r2)
+        assert jnp.array_equal(d1, d2)
+
+    def test_different_keys_same_shape(self):
+        env = _PixelEnv()
+        obs1, _ = env.reset(jax.random.PRNGKey(0), _PARAMS)
+        obs2, _ = env.reset(jax.random.PRNGKey(1), _PARAMS)
+        assert obs1.shape == obs2.shape
+
+
+class TestStepEnv:
+    def test_auto_reset_when_done(self):
+        params = EnvParams(max_steps=1)
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, params)
+        obs, new_state, reward, done, _ = env.step_env(
+            _RNG, state, jnp.int32(0), params
+        )
+        assert bool(done)
+        assert int(new_state.step) == 0
+
+    def test_no_reset_when_not_done(self):
+        params = EnvParams(max_steps=100)
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, params)
+        _, new_state, _, done, _ = env.step_env(
+            _RNG, state, jnp.int32(0), params
+        )
+        assert not bool(done)
+        assert int(new_state.step) == 1
+
+    def test_step_env_jit_compatible(self):
+        env = _PixelEnv()
+        _, state = env.reset(_RNG, _PARAMS)
+        obs, new_state, reward, done, _ = jax.jit(env.step_env)(
+            _RNG, state, jnp.int32(0), _PARAMS
+        )
+        assert obs.shape == (4, 4, 3)

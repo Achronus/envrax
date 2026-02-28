@@ -28,6 +28,7 @@ from envrax.spaces import Box, Discrete
 # ---------------------------------------------------------------------------
 
 
+@chex.dataclass
 class _DummyState(EnvState):
     pass
 
