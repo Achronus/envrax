@@ -14,6 +14,8 @@
 # ==============================================================================
 
 from envrax.base import EnvParams, EnvState, JaxEnv
+from envrax.envs import EnvGroup, EnvSet
+from envrax.error import MissingPackageError
 from envrax.registry import make, register, registered_names
 from envrax.spaces import Box, Discrete, Space
 from envrax.wrappers import (
@@ -36,9 +38,12 @@ __all__ = [
     "Box",
     "ClipReward",
     "Discrete",
+    "EnvGroup",
     "EnvParams",
+    "EnvSet",
     "EnvState",
     "EpisodeDiscount",
+    "MissingPackageError",
     "EpisodeStatisticsState",
     "ExpandDims",
     "FrameStackObservation",
