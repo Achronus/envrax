@@ -18,7 +18,6 @@ from typing import Any, Dict, Tuple
 
 import chex
 import jax
-import jax.numpy as jnp
 
 from envrax.spaces import Space
 
@@ -33,13 +32,13 @@ class EnvState:
 
     Parameters
     ----------
-    step : jnp.int32
+    step : chex.Array
         Current timestep within the episode.
     done : chex.Array
         bool scalar — episode termination flag.
     """
 
-    step: jnp.int32
+    step: chex.Array
     done: chex.Array
 
 
