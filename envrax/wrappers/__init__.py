@@ -19,6 +19,7 @@ from envrax.wrappers.discount import EpisodeDiscount
 from envrax.wrappers.expand_dims import ExpandDims
 from envrax.wrappers.frame_stack import FrameStackObservation, FrameStackState
 from envrax.wrappers.grayscale import GrayscaleObservation
+from envrax.wrappers.jit_wrapper import JitWrapper
 from envrax.wrappers.normalize_obs import NormalizeObservation
 from envrax.wrappers.record_episode_statistics import (
     EpisodeStatisticsState,
@@ -37,6 +38,7 @@ __all__ = [
     "FrameStackObservation",
     "FrameStackState",
     "GrayscaleObservation",
+    "JitWrapper",
     "NormalizeObservation",
     "RecordEpisodeStatistics",
     "RecordVideo",
