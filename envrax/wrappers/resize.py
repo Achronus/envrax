@@ -105,7 +105,11 @@ class ResizeObservation(Wrapper):
 
     @property
     def observation_space(self) -> Box:
-        inner = self._env.observation_space
-        return Box(
-            low=inner.low, high=inner.high, shape=(self._h, self._w), dtype=inner.dtype
-        )
+        inner: Box = self._env.observation_space  # type: ignore
+
+        if len(inner.shape) == 3:
+            shape = (self._h, self._w, inner.shape[-1])
+        else:
+            shape = (self._h, self._w)
+
+        return Box(low=inner.low, high=inner.high, shape=shape, dtype=inner.dtype)
