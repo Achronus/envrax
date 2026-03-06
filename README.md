@@ -14,8 +14,10 @@ All environment logic follows a **stateless functional design**: state is an exp
 - **`EnvState` + `EnvParams`** — `chex.dataclass` pytrees for state and static config; fully composable with `jax.tree_util`, `optax`, and `flax`.
 - **`Discrete` + `Box` spaces** — typed observation and action space definitions with `sample()` and `contains()`.
 - **`VmapEnv`** — wraps any `JaxEnv` to run `N` parallel instances via `jax.vmap`. No changes to the underlying environment needed.
-- **Composable wrappers** — nine generic preprocessing wrappers covering observation transforms, reward shaping, and episode tracking; all updated to the `JaxEnv` API.
-- **Shared registry** — `register()` / `make()` let any installed suite package expose its environments through a single `envrax.make("Name-v0")` call.
+- **`JitWrapper`** — wraps any `JaxEnv` to compile `reset` and `step` with `jax.jit` on construction and cache compiled kernels to disk.
+- **`make()` factory** — create any registered environment with optional wrappers and automatic JIT compilation in one call.
+- **Composable wrappers** — ten generic preprocessing wrappers covering observation transforms, reward shaping, and episode tracking; all compatible with `jit`, `vmap`, and `lax.scan`.
+- **Shared registry** — `register()` / `make()` let any installed suite package expose its environments through a single `envrax.make("name-v0")` call.
 
 ## Requirements
 
@@ -145,28 +147,55 @@ def collect_rollout(rng, params, vec_env, num_steps=128):
     return trajectory
 ```
 
-### Registry
-
-Each suite package registers its environments on import. Once registered, all
-environments are accessible through a single `envrax.make()` call:
+### `make()` — create with JIT and wrappers
 
 ```python
 import envrax
 import atarax  # registers Atarax envs into envrax on import
 
-env, params = envrax.make("Breakout-v0", max_steps=27000)
+# JIT-compiled by default; warm-up step runs at construction time
+env, params = envrax.make("atari/breakout-v0")
 obs, state = env.reset(jax.random.PRNGKey(0), params)
+
+# Apply wrappers (innermost-first)
+from envrax.wrappers import GrayscaleObservation, ResizeObservation
+env, params = envrax.make(
+    "atari/breakout-v0",
+    wrappers=[GrayscaleObservation, ResizeObservation],
+    jit_compile=False,
+)
+
+# Vectorised environments
+vec_env, params = envrax.make_vec("atari/breakout-v0", n_envs=64)
+obs, states = vec_env.reset(jax.random.PRNGKey(0), params)  # obs: [64, ...]
+
+# Multiple environments at once
+envs = envrax.make_multi(["atari/breakout-v0", "atari/asteroids-v0"])
 ```
 
-Registering your own environments:
+### Registry — low-level lookup
+
+`make_env()` is the bare-metal registry lookup (no JIT, no wrappers):
 
 ```python
-from envrax import register, make, EnvParams
+from envrax import make_env, register, EnvParams
 
 register("BallEnv-v0", BallEnv, EnvParams(max_steps=500))
 
-env, params = make("BallEnv-v0")
-env, params = make("BallEnv-v0", max_steps=1000)  # override default
+env, params = make_env("BallEnv-v0")
+env, params = make_env("BallEnv-v0", max_steps=1000)  # override default
+```
+
+### `JitWrapper` — manual JIT control
+
+```python
+from envrax.wrappers import JitWrapper
+
+env = BallEnv()
+env = JitWrapper(env)  # compiles reset + step immediately
+
+obs, state = env.reset(jax.random.PRNGKey(0), params)
+obs, state, reward, done, info = env.step(jax.random.PRNGKey(1), state, action, params)
 ```
 
 ## Wrappers
@@ -177,8 +206,9 @@ compatible with `jit`, `vmap`, and `lax.scan`.
 
 | Wrapper | Input obs | Output obs | Description | Extra state |
 | --- | --- | --- | --- | --- |
+| `JitWrapper` | any env | same obs | Compiles `reset` + `step` with `jax.jit`; caches kernels to disk | — |
 | `GrayscaleObservation` | `uint8[H, W, 3]` | `uint8[H, W]` | NTSC luminance conversion | — |
-| `ResizeObservation(h, w)` | `uint8[H, W]` | `uint8[h, w]` | Bilinear resize (default 84×84) | — |
+| `ResizeObservation(h, w)` | `uint8[H, W]` or `uint8[H, W, C]` | `uint8[h, w]` or `uint8[h, w, C]` | Bilinear resize (default 84×84) | — |
 | `NormalizeObservation` | `uint8[...]` | `float32[...]` in `[0, 1]` | Divide by 255 | — |
 | `FrameStackObservation(n_stack)` | `uint8[H, W]` | `uint8[H, W, n_stack]` | Rolling frame buffer (default 4) | `FrameStackState` |
 | `ClipReward` | any reward | `float32 ∈ {−1, 0, +1}` | Sign clipping | — |
@@ -221,24 +251,33 @@ env = FrameStackObservation(env, n_stack=4)
 | `Discrete(n)` | `n` integer actions in `[0, n)`. |
 | `Box(low, high, shape, dtype)` | Continuous array space. |
 
+### Factory functions (`envrax.make`)
+
+| Symbol | Description |
+| --- | --- |
+| `make(name, *, params, wrappers, jit_compile, cache_dir)` | Create a single env with optional wrappers and JIT. Returns `(JaxEnv, EnvParams)`. |
+| `make_vec(name, n_envs, ...)` | Create a `VmapEnv` of `n_envs` parallel environments. |
+| `make_multi(names, ...)` | Create one env per name. Returns `List[(JaxEnv, EnvParams)]`. |
+| `make_multi_vec(names, n_envs, ...)` | Create one `VmapEnv` per name. |
+
 ### Registry (`envrax.registry`)
 
 | Symbol | Description |
 | --- | --- |
 | `register(name, cls, default_params)` | Register a `JaxEnv` under a name. Called on package import. |
-| `make(name, **overrides)` | Instantiate by name. Returns `(JaxEnv, EnvParams)`. |
+| `make_env(name, **overrides)` | Bare-metal instantiate by name (no JIT, no wrappers). Returns `(JaxEnv, EnvParams)`. |
 | `registered_names()` | Sorted list of all registered environment names. |
 
 ## The Envrax Suite
 
-Four packages share this common API:
+Packages that share this common API:
 
 | Package | PyPI | Description |
 | --- | --- | --- |
 | **envrax** | `pip install envrax` | Core API, base classes, spaces, wrappers |
 | **atarax** | `pip install atarax` | JAX-native Atari 2600 game suite |
-| **proxen** | `pip install proxen` | JAX-native Procgen suite |
-| **labrax** | `pip install labrax` | JAX-native DMLab-style 3D navigation |
+<!-- | **proxen** | `pip install proxen` | JAX-native Procgen suite | -->
+<!-- | **labrax** | `pip install labrax` | JAX-native DMLab-style 3D navigation | -->
 
 Install only what you need — each suite package pulls in `envrax` automatically.
 

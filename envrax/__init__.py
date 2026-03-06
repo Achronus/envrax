@@ -16,7 +16,8 @@
 from envrax.base import EnvParams, EnvState, JaxEnv
 from envrax.envs import EnvGroup, EnvSet
 from envrax.error import MissingPackageError
-from envrax.registry import make, register, registered_names
+from envrax.make import make, make_multi, make_multi_vec, make_vec
+from envrax.registry import make_env, register, registered_names
 from envrax.spaces import Box, Discrete, Space
 from envrax.wrappers import (
     ClipReward,
@@ -26,6 +27,7 @@ from envrax.wrappers import (
     FrameStackObservation,
     FrameStackState,
     GrayscaleObservation,
+    JitWrapper,
     NormalizeObservation,
     RecordEpisodeStatistics,
     RecordVideo,
@@ -50,6 +52,7 @@ __all__ = [
     "FrameStackState",
     "GrayscaleObservation",
     "JaxEnv",
+    "JitWrapper",
     "NormalizeObservation",
     "RecordEpisodeStatistics",
     "RecordVideo",
@@ -58,6 +61,10 @@ __all__ = [
     "VmapEnv",
     "Wrapper",
     "make",
+    "make_env",
+    "make_multi",
+    "make_multi_vec",
+    "make_vec",
     "register",
     "registered_names",
 ]

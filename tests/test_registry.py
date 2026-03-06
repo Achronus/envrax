@@ -19,7 +19,7 @@ import jax.numpy as jnp
 import pytest
 
 from envrax.base import EnvParams, EnvState, JaxEnv
-from envrax.registry import _REGISTRY, make, register
+from envrax.registry import _REGISTRY, make_env, register
 from envrax.spaces import Box, Discrete
 
 
@@ -63,20 +63,20 @@ class TestRegistry:
     def teardown_method(self):
         _REGISTRY.pop("DummyEnv-v0", None)
 
-    def test_register_and_make(self):
+    def test_register_and_make_env(self):
         register("DummyEnv-v0", _DummyEnv, EnvParams())
-        env, params = make("DummyEnv-v0")
+        env, params = make_env("DummyEnv-v0")
         assert isinstance(env, _DummyEnv)
         assert params.max_steps == 1000
 
     def test_make_with_override(self):
         register("DummyEnv-v0", _DummyEnv, EnvParams())
-        env, params = make("DummyEnv-v0", max_steps=500)
+        env, params = make_env("DummyEnv-v0", max_steps=500)
         assert params.max_steps == 500
 
     def test_make_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown environment"):
-            make("DoesNotExist-v0")
+            make_env("DoesNotExist-v0")
 
     def test_register_duplicate_raises(self):
         register("DummyEnv-v0", _DummyEnv, EnvParams())
@@ -85,7 +85,7 @@ class TestRegistry:
 
     def test_env_reset_step(self):
         register("DummyEnv-v0", _DummyEnv, EnvParams())
-        env, params = make("DummyEnv-v0")
+        env, params = make_env("DummyEnv-v0")
         rng = jax.random.PRNGKey(0)
         obs, state = env.reset(rng, params)
         assert obs.shape == (4,)
