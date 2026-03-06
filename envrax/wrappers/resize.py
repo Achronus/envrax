@@ -25,15 +25,21 @@ from envrax.wrappers.utils import resize
 
 class ResizeObservation(Wrapper):
     """
-    Resize 2-D grayscale observations to `(h, w)` using bilinear interpolation.
+    Resize observations to `(h, w)` using bilinear interpolation.
 
-    Expects the inner environment to produce `uint8[H, W]` observations
-    (i.e. wrap with `GrayscaleObservation` first).
+    Handles both:
+
+    - **Grayscale** — `uint8[H, W]` → `uint8[h, w]`
+    - **RGB** — `uint8[H, W, C]` → `uint8[h, w, C]`
+
+    The channel dimension is preserved automatically; no pre-processing step
+    is required.  For DQN-style pipelines, apply `GrayscaleObservation` first
+    so the output is `uint8[h, w]` before stacking.
 
     Parameters
     ----------
     env : JaxEnv
-        Inner environment returning 2-D grayscale observations.
+        Inner environment returning `uint8[H, W]` or `uint8[H, W, C]` observations.
     h : int (optional)
         Output height in pixels. Default is `84`.
     w : int (optional)
@@ -59,7 +65,7 @@ class ResizeObservation(Wrapper):
         Returns
         -------
         obs  : chex.Array
-            uint8[h, w] — Resized grayscale observation.
+            uint8[h, w] or uint8[h, w, C] — Resized observation.
         state : Any
             Inner environment state.
         """
@@ -90,7 +96,7 @@ class ResizeObservation(Wrapper):
         Returns
         -------
         obs  : chex.Array
-            uint8[h, w] — Resized observation.
+            uint8[h, w] or uint8[h, w, C] — Resized observation.
         new_state : Any
             Updated environment state.
         reward  : chex.Array
