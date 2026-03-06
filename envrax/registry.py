@@ -30,7 +30,7 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
     Parameters
     ----------
     name : str
-        Unique environment name (e.g. ``"Breakout-v0"``).
+        Unique environment name (e.g. `"atari/breakout-v0"`).
     env_class : Type[JaxEnv]
         The environment class to register.
     default_params : EnvParams
@@ -38,8 +38,8 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
 
     Raises
     ------
-    ValueError
-        If ``name`` is already registered.
+    env_exists : ValueError
+        If `name` is already registered.
     """
     if name in _REGISTRY:
         raise ValueError(
@@ -49,19 +49,18 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
     _REGISTRY[name] = (env_class, default_params)
 
 
-def make(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
+def make_env(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
     """
-    Create an environment instance by name.
+    Create a bare environment instance by name (no JIT, no wrappers).
 
-    Works for any installed package that registers its environments on import
-    (atarax, proxen, labrax all do this).
+    For JIT compilation and wrapper support use `envrax.make()` instead.
 
     Parameters
     ----------
     name : str
-        Registered environment name (e.g. ``"Breakout-v0"``).
+        Registered environment name (e.g. `"atari/breakout-v0"`).
     **param_overrides
-        Keyword arguments forwarded to ``EnvParams.replace()`` to override
+        Keyword arguments forwarded to `EnvParams.__replace__()` to override
         individual default parameters.
 
     Returns
@@ -73,13 +72,8 @@ def make(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
 
     Raises
     ------
-    ValueError
-        If ``name`` is not registered.
-
-    Examples
-    --------
-    >>> import atarax   # registers atarax envs into envrax on import
-    >>> env, params = envrax.make("Breakout-v0", max_steps=2000)
+    env_exists : ValueError
+        If `name` is not registered.
     """
     if name not in _REGISTRY:
         available = sorted(_REGISTRY)
