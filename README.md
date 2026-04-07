@@ -268,19 +268,6 @@ env = FrameStackObservation(env, n_stack=4)
 | `make_env(name, **overrides)` | Bare-metal instantiate by name (no JIT, no wrappers). Returns `(JaxEnv, EnvParams)`. |
 | `registered_names()` | Sorted list of all registered environment names. |
 
-## The Envrax Suite
-
-Packages that share this common API:
-
-| Package | PyPI | Description |
-| --- | --- | --- |
-| **envrax** | `pip install envrax` | Core API, base classes, spaces, wrappers |
-| **atarax** | `pip install atarax` | JAX-native Atari 2600 game suite |
-<!-- | **proxen** | `pip install proxen` | JAX-native Procgen suite | -->
-<!-- | **labrax** | `pip install labrax` | JAX-native DMLab-style 3D navigation | -->
-
-Install only what you need — each suite package pulls in `envrax` automatically.
-
 ## Licence
 
 Apache 2.0 — see [LICENSE](LICENSE).
