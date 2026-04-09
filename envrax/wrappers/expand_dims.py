@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.wrappers.base import Wrapper
 
 
@@ -23,15 +23,15 @@ class ExpandDims(Wrapper):
     def __init__(self, env: JaxEnv) -> None:
         super().__init__(env)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
-        return self._env.reset(rng, params)
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
+        return self._env.reset(rng, config)
 
     def step(
         self,
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Advance the environment and expand `reward` and `done`.
@@ -44,8 +44,8 @@ class ExpandDims(Wrapper):
             Current environment state.
         action : chex.Array
             int32 — Action index.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -60,7 +60,7 @@ class ExpandDims(Wrapper):
         info : Dict[str, Any]
             Auxiliary info dict (unchanged).
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, params)
+        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
         return (
             obs,
             new_state,

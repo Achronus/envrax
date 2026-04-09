@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.wrappers.base import Wrapper
 
 
@@ -45,7 +45,7 @@ class RecordEpisodeStatistics(Wrapper):
         super().__init__(env)
 
     def reset(
-        self, rng: chex.PRNGKey, params: EnvParams
+        self, rng: chex.PRNGKey, config: EnvConfig
     ) -> Tuple[chex.Array, EpisodeStatisticsState]:
         """
         Reset the environment and episode accumulators.
@@ -54,8 +54,8 @@ class RecordEpisodeStatistics(Wrapper):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -64,7 +64,7 @@ class RecordEpisodeStatistics(Wrapper):
         state : EpisodeStatisticsState
             Initial state with zeroed accumulators.
         """
-        obs, env_state = self._env.reset(rng, params)
+        obs, env_state = self._env.reset(rng, config)
         state = EpisodeStatisticsState(
             env_state=env_state,
             episode_return=jnp.float32(0.0),
@@ -77,8 +77,10 @@ class RecordEpisodeStatistics(Wrapper):
         rng: chex.PRNGKey,
         state: EpisodeStatisticsState,
         action: chex.Array,
-        params: EnvParams,
-    ) -> Tuple[chex.Array, EpisodeStatisticsState, chex.Array, chex.Array, Dict[str, Any]]:
+        config: EnvConfig,
+    ) -> Tuple[
+        chex.Array, EpisodeStatisticsState, chex.Array, chex.Array, Dict[str, Any]
+    ]:
         """
         Step the environment and update episode accumulators.
 
@@ -90,8 +92,8 @@ class RecordEpisodeStatistics(Wrapper):
             Current state.
         action : chex.Array
             Action to take.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -108,7 +110,7 @@ class RecordEpisodeStatistics(Wrapper):
             `{"r": float32, "l": int32}` — non-zero only when `done=True`.
         """
         obs, env_state, reward, done, info = self._env.step(
-            rng, state.env_state, action, params
+            rng, state.env_state, action, config
         )
 
         episode_return = state.episode_return + reward.astype(jnp.float32)

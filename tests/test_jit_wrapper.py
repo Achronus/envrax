@@ -9,10 +9,9 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvParams, EnvState, JaxEnv
+from envrax.base import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Box, Discrete
 from envrax.wrappers import JitWrapper, Wrapper
-
 
 # ---------------------------------------------------------------------------
 # Minimal concrete env for testing
@@ -35,21 +34,21 @@ class _VectorEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=2)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams):
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig):
         obs = jnp.zeros((4,), dtype=jnp.float32)
         state = _VectorState(step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, params):
+    def step(self, rng, state, action, config):
         obs = jnp.zeros((4,), dtype=jnp.float32)
         new_state = state.replace(step=state.step + 1)
         reward = jnp.float32(1.0)
-        done = new_state.step >= params.max_steps
+        done = new_state.step >= config.max_steps
         return obs, new_state.replace(done=done), reward, done, {}
 
 
 _RNG = jax.random.PRNGKey(0)
-_PARAMS = EnvParams(max_steps=10)
+_PARAMS = EnvConfig(max_steps=10)
 
 
 class TestJitWrapper:
@@ -99,8 +98,8 @@ class TestJitWrapper:
 
     def test_done_after_max_steps(self):
         env = JitWrapper(_VectorEnv(), cache_dir=None)
-        params = EnvParams(max_steps=2)
-        _, state = env.reset(_RNG, params)
-        _, state, _, _, _ = env.step(_RNG, state, jnp.int32(0), params)
-        _, _, _, done, _ = env.step(_RNG, state, jnp.int32(0), params)
+        config = EnvConfig(max_steps=2)
+        _, state = env.reset(_RNG, config)
+        _, state, _, _, _ = env.step(_RNG, state, jnp.int32(0), config)
+        _, _, _, done, _ = env.step(_RNG, state, jnp.int32(0), config)
         assert bool(done)

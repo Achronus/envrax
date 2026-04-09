@@ -4,7 +4,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 
@@ -46,7 +46,9 @@ class FrameStackObservation(Wrapper):
         super().__init__(env)
         self._n_stack = n_stack
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, FrameStackState]:
+    def reset(
+        self, rng: chex.PRNGKey, config: EnvConfig
+    ) -> Tuple[chex.Array, FrameStackState]:
         """
         Reset the inner environment and initialise the frame stack.
 
@@ -54,8 +56,8 @@ class FrameStackObservation(Wrapper):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -64,7 +66,7 @@ class FrameStackObservation(Wrapper):
         state : FrameStackState
             Wrapper state containing the inner state and the stack.
         """
-        obs, env_state = self._env.reset(rng, params)
+        obs, env_state = self._env.reset(rng, config)
         stack = jnp.stack([obs] * self._n_stack, axis=-1)
         wrapped = FrameStackState(env_state=env_state, obs_stack=stack)
         return stack, wrapped
@@ -74,7 +76,7 @@ class FrameStackObservation(Wrapper):
         rng: chex.PRNGKey,
         state: FrameStackState,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, FrameStackState, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step the inner environment and roll the frame stack.
@@ -87,8 +89,8 @@ class FrameStackObservation(Wrapper):
             Current wrapper state.
         action : chex.Array
             int32 — Action index.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -104,7 +106,7 @@ class FrameStackObservation(Wrapper):
             Info dict from the inner step.
         """
         obs, env_state, reward, done, info = self._env.step(
-            rng, state.env_state, action, params
+            rng, state.env_state, action, config
         )
         new_stack = jnp.concatenate([state.obs_stack[..., 1:], obs[..., None]], axis=-1)  # type: ignore
         new_state = FrameStackState(env_state=env_state, obs_stack=new_stack)

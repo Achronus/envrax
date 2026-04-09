@@ -1,11 +1,11 @@
 from typing import Dict, List, Tuple, Type
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 
-_REGISTRY: Dict[str, Tuple[Type[JaxEnv], EnvParams]] = {}
+_REGISTRY: Dict[str, Tuple[Type[JaxEnv], EnvConfig]] = {}
 
 
-def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> None:
+def register(name: str, env_class: Type[JaxEnv], default_config: EnvConfig) -> None:
     """
     Register an environment class under a given name.
 
@@ -18,8 +18,8 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
         Unique environment name (e.g. `"atari/breakout-v0"`).
     env_class : Type[JaxEnv]
         The environment class to register.
-    default_params : EnvParams
-        Default parameters for this environment.
+    default_config : EnvConfig
+        Default configuration for this environment.
 
     Raises
     ------
@@ -31,10 +31,10 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
             f"Environment {name!r} is already registered. "
             "Use a unique name or unregister the existing entry first."
         )
-    _REGISTRY[name] = (env_class, default_params)
+    _REGISTRY[name] = (env_class, default_config)
 
 
-def make_env(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
+def make_env(name: str, **config_overrides) -> Tuple[JaxEnv, EnvConfig]:
     """
     Create a bare environment instance by name (no JIT, no wrappers).
 
@@ -44,16 +44,16 @@ def make_env(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
     ----------
     name : str
         Registered environment name (e.g. `"atari/breakout-v0"`).
-    **param_overrides
-        Keyword arguments forwarded to `EnvParams.__replace__()` to override
-        individual default parameters.
+    **config_overrides
+        Keyword arguments forwarded to `EnvConfig.__replace__()` to override
+        individual default config values.
 
     Returns
     -------
     env : JaxEnv
         Instantiated environment.
-    params : EnvParams
-        Resolved parameters (defaults merged with any overrides).
+    config : EnvConfig
+        Resolved configuration (defaults merged with any overrides).
 
     Raises
     ------
@@ -63,13 +63,13 @@ def make_env(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
     if name not in _REGISTRY:
         available = sorted(_REGISTRY)
         raise ValueError(f"Unknown environment: {name!r}. Available: {available}")
-    env_class, default_params = _REGISTRY[name]
-    params = (
-        default_params.__replace__(**param_overrides)
-        if param_overrides
-        else default_params
+    env_class, default_config = _REGISTRY[name]
+    config = (
+        default_config.__replace__(**config_overrides)
+        if config_overrides
+        else default_config
     )
-    return env_class(), params
+    return env_class(), config
 
 
 def registered_names() -> List[str]:

@@ -2,7 +2,7 @@ from typing import Any, Dict, Tuple
 
 import chex
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 from envrax.wrappers.utils import to_gray
@@ -24,7 +24,7 @@ class GrayscaleObservation(Wrapper):
     def __init__(self, env: JaxEnv) -> None:
         super().__init__(env)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
         """
         Reset the inner environment and convert the observation to grayscale.
 
@@ -32,8 +32,8 @@ class GrayscaleObservation(Wrapper):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -42,7 +42,7 @@ class GrayscaleObservation(Wrapper):
         state : Any
             Inner environment state.
         """
-        obs, state = self._env.reset(rng, params)
+        obs, state = self._env.reset(rng, config)
         return to_gray(obs), state
 
     def step(
@@ -50,7 +50,7 @@ class GrayscaleObservation(Wrapper):
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step the inner environment and convert the observation to grayscale.
@@ -63,8 +63,8 @@ class GrayscaleObservation(Wrapper):
             Current environment state.
         action : chex.Array
             int32 — Action index.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -79,7 +79,7 @@ class GrayscaleObservation(Wrapper):
         info : dict
             Info dict from the inner step.
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, params)
+        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
         return to_gray(obs), new_state, reward, done, info
 
     @property

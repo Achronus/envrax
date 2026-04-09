@@ -28,7 +28,7 @@ class EnvState:
 
 
 @chex.dataclass
-class EnvParams:
+class EnvConfig:
     """
     Static environment configuration. Set once at construction, never changed.
     Controls things like max_steps, reward scaling, difficulty, etc.
@@ -66,7 +66,7 @@ class JaxEnv(ABC):
     def reset(
         self,
         rng: chex.PRNGKey,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, EnvState]:
         """
         Pure function. Returns (observation, initial_state).
@@ -77,7 +77,7 @@ class JaxEnv(ABC):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
+        config : EnvConfig
             Static environment configuration.
 
         Returns
@@ -95,7 +95,7 @@ class JaxEnv(ABC):
         rng: chex.PRNGKey,
         state: EnvState,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Takes an action through the environment.
@@ -108,7 +108,7 @@ class JaxEnv(ABC):
             Current environment state.
         action : chex.Array
             Integer scalar in [0, num_actions).
-        params : EnvParams
+        config : EnvConfig
             Static environment configuration.
 
         Returns

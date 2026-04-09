@@ -5,30 +5,30 @@ import jax
 import jax.numpy as jnp
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.registry import _REGISTRY
+from envrax.vec_env import VecEnv
 from envrax.wrappers.base import Wrapper, _WrapperFactory
 from envrax.wrappers.jit_wrapper import JitWrapper
-from envrax.wrappers.vmap_env import VmapEnv
 
 
 def make(
     name: str,
     *,
-    params: EnvParams | None = None,
+    config: EnvConfig | None = None,
     wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> Tuple[JaxEnv, EnvParams]:
+) -> Tuple[JaxEnv, EnvConfig]:
     """
     Create a single `JaxEnv`, optionally with wrappers applied.
 
     Parameters
     ----------
     name : str
-        Registered environment name (e.g. ``"atari/breakout-v0"``).
-    params : EnvParams (optional)
-        Environment parameters. Defaults to the registered default params.
+        Registered environment name
+    config : EnvConfig (optional)
+        Environment configuration. Defaults to the registered default config.
     wrappers : List[Type[Wrapper] | _WrapperFactory] (optional)
         Wrapper classes or pre-configured factories applied innermost-first
         around the base env.
@@ -43,20 +43,20 @@ def make(
     -------
     env : JaxEnv
         Configured environment, wrapped in `JitWrapper` when `jit_compile=True`.
-    params : EnvParams
-        Environment parameters used by the environment.
+    config : EnvConfig
+        Environment configuration used by the environment.
 
     Raises
     ------
     ValueError
-        If ``name`` is not registered.
+        If `name` is not registered.
     """
     if name not in _REGISTRY:
         available = sorted(_REGISTRY)
         raise ValueError(f"Unknown environment: {name!r}. Available: {available}")
 
-    env_class, default_params = _REGISTRY[name]
-    resolved_params = params if params is not None else default_params
+    env_class, default_config = _REGISTRY[name]
+    resolved_config = config if config is not None else default_config
     env: JaxEnv = env_class()
 
     if wrappers:
@@ -66,21 +66,21 @@ def make(
     if jit_compile:
         env = JitWrapper(env, cache_dir=cache_dir)
         _key = jax.random.PRNGKey(0)
-        _, _state = env.reset(_key, resolved_params)
-        env.step(_key, _state, env.action_space.sample(_key), resolved_params)
+        _, _state = env.reset(_key, resolved_config)
+        env.step(_key, _state, env.action_space.sample(_key), resolved_config)
 
-    return env, resolved_params
+    return env, resolved_config
 
 
 def make_vec(
     name: str,
     n_envs: int,
     *,
-    params: EnvParams | None = None,
+    config: EnvConfig | None = None,
     wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> Tuple[VmapEnv, EnvParams]:
+) -> Tuple[VecEnv, EnvConfig]:
     """
     Create a `VmapEnv` with `n_envs` parallel environments.
 
@@ -90,8 +90,8 @@ def make_vec(
         Registered environment name.
     n_envs : int
         Number of parallel environments.
-    params : EnvParams (optional)
-        Environment parameters. Defaults to the registered default params.
+    config : EnvConfig (optional)
+        Environment configuration. Defaults to the registered default config.
     wrappers : List[Type[Wrapper] | _WrapperFactory] (optional)
         Wrapper classes applied innermost-first. Applied before vectorisation.
     jit_compile : bool (optional)
@@ -104,41 +104,41 @@ def make_vec(
     -------
     vec_env : VmapEnv
         Vectorised environment.
-    params : EnvParams
-        Environment parameters used by the environment.
+    config : EnvConfig
+        Environment configuration used by the environment.
     """
-    inner_env, resolved_params = make(
+    inner_env, resolved_config = make(
         name,
-        params=params,
+        config=config,
         wrappers=wrappers,
         jit_compile=False,
         cache_dir=None,
     )
 
-    vec_env = VmapEnv(inner_env, n_envs)
+    vec_env = VecEnv(inner_env, n_envs)
 
     if jit_compile:
         setup_cache(cache_dir)
         _key = jax.random.PRNGKey(0)
-        _, _states = vec_env.reset(_key, resolved_params)
-        vec_env.step(_key, _states, jnp.zeros(n_envs, dtype=jnp.int32), resolved_params)
+        _, _states = vec_env.reset(_key, resolved_config)
+        vec_env.step(_key, _states, jnp.zeros(n_envs, dtype=jnp.int32), resolved_config)
 
-    return vec_env, resolved_params
+    return vec_env, resolved_config
 
 
 def make_multi(
     names: List[str],
     *,
-    params: EnvParams | None = None,
+    config: EnvConfig | None = None,
     wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> List[Tuple[JaxEnv, EnvParams]]:
-    """Create one `(JaxEnv, EnvParams)` tuple per entry in `names`."""
+) -> List[Tuple[JaxEnv, EnvConfig]]:
+    """Create one `(JaxEnv, EnvConfig)` tuple per entry in `names`."""
     return [
         make(
             name,
-            params=params,
+            config=config,
             wrappers=wrappers,
             jit_compile=jit_compile,
             cache_dir=cache_dir,
@@ -151,17 +151,17 @@ def make_multi_vec(
     names: List[str],
     n_envs: int,
     *,
-    params: EnvParams | None = None,
+    config: EnvConfig | None = None,
     wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> List[Tuple[VmapEnv, EnvParams]]:
-    """Create one `(VmapEnv, EnvParams)` tuple per entry in `names`."""
+) -> List[Tuple[VecEnv, EnvConfig]]:
+    """Create one `(VmapEnv, EnvConfig)` tuple per entry in `names`."""
     return [
         make_vec(
             name,
             n_envs,
-            params=params,
+            config=config,
             wrappers=wrappers,
             jit_compile=jit_compile,
             cache_dir=cache_dir,

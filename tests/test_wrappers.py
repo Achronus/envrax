@@ -3,8 +3,9 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvParams, EnvState, JaxEnv
-from envrax.spaces import Box, Discrete
+from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.spaces import Box, Discrete, MultiDiscrete
+from envrax.vec_env import VecEnv
 from envrax.wrappers import (
     ClipReward,
     EpisodeDiscount,
@@ -14,7 +15,6 @@ from envrax.wrappers import (
     NormalizeObservation,
     RecordEpisodeStatistics,
     ResizeObservation,
-    VmapEnv,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,16 +38,16 @@ class _PixelEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=2)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams):
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig):
         obs = jnp.full((4, 4, 3), 128, dtype=jnp.uint8)
         state = _PixelState(step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, params):
+    def step(self, rng, state, action, config):
         obs = jnp.full((4, 4, 3), 64, dtype=jnp.uint8)
         new_state = state.replace(
             step=state.step + 1,
-            done=jnp.bool_(state.step + 1 >= params.max_steps),
+            done=jnp.bool_(state.step + 1 >= config.max_steps),
         )
         reward = jnp.float32(1.0)
         done = new_state.done
@@ -55,7 +55,7 @@ class _PixelEnv(JaxEnv):
 
 
 _RNG = jax.random.PRNGKey(42)
-_PARAMS = EnvParams(max_steps=10)
+_PARAMS = EnvConfig(max_steps=10)
 
 
 class TestClipReward:
@@ -67,8 +67,8 @@ class TestClipReward:
 
     def test_negative_reward_clipped(self):
         class _NegRewardEnv(_PixelEnv):
-            def step(self, rng, state, action, params):
-                obs, new_state, _, done, info = super().step(rng, state, action, params)
+            def step(self, rng, state, action, config):
+                obs, new_state, _, done, info = super().step(rng, state, action, config)
                 return obs, new_state, jnp.float32(-5.0), done, info
 
         env = ClipReward(_NegRewardEnv())
@@ -172,20 +172,44 @@ class TestRecordEpisodeStatistics:
         assert float(state.episode_return) > 0.0
 
 
-class TestVmapEnv:
+class TestVecEnv:
     def test_reset_batch_shape(self):
-        env = VmapEnv(_PixelEnv(), num_envs=4)
+        env = VecEnv(_PixelEnv(), num_envs=4)
         obs, states = env.reset(_RNG, _PARAMS)
         assert obs.shape == (4, 4, 4, 3)
 
     def test_step_batch_shape(self):
-        env = VmapEnv(_PixelEnv(), num_envs=4)
+        env = VecEnv(_PixelEnv(), num_envs=4)
         _, states = env.reset(_RNG, _PARAMS)
         actions = jnp.zeros(4, dtype=jnp.int32)
         obs, _, rewards, dones, _ = env.step(_RNG, states, actions, _PARAMS)
         assert obs.shape == (4, 4, 4, 3)
         assert rewards.shape == (4,)
         assert dones.shape == (4,)
+
+    def test_single_observation_space(self):
+        env = VecEnv(_PixelEnv(), num_envs=8)
+        space = env.single_observation_space
+        assert isinstance(space, Box)
+        assert space.shape == (4, 4, 3)
+
+    def test_single_action_space(self):
+        env = VecEnv(_PixelEnv(), num_envs=8)
+        space = env.single_action_space
+        assert isinstance(space, Discrete)
+        assert space.n == 2
+
+    def test_observation_space_batched(self):
+        env = VecEnv(_PixelEnv(), num_envs=8)
+        space = env.observation_space
+        assert isinstance(space, Box)
+        assert space.shape == (8, 4, 4, 3)
+
+    def test_action_space_batched(self):
+        env = VecEnv(_PixelEnv(), num_envs=8)
+        space = env.action_space
+        assert isinstance(space, MultiDiscrete)
+        assert space.nvec == (2,) * 8
 
 
 class TestJitCompile:
@@ -268,31 +292,30 @@ class TestDeterminism:
         assert obs1.shape == obs2.shape
 
 
-class TestStepEnv:
+class TestVecEnvAutoReset:
     def test_auto_reset_when_done(self):
-        params = EnvParams(max_steps=1)
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, params)
-        obs, new_state, reward, done, _ = env.step_env(
-            _RNG, state, jnp.int32(0), params
-        )
-        assert bool(done)
-        assert int(new_state.step) == 0
+        config = EnvConfig(max_steps=1)
+        env = VecEnv(_PixelEnv(), num_envs=1)
+        _, states = env.reset(_RNG, config)
+        actions = jnp.zeros(1, dtype=jnp.int32)
+        obs, new_states, reward, done, _ = env.step(_RNG, states, actions, config)
+        assert bool(done[0])
+        assert int(new_states.step[0]) == 0
 
     def test_no_reset_when_not_done(self):
-        params = EnvParams(max_steps=100)
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, params)
-        _, new_state, _, done, _ = env.step_env(
-            _RNG, state, jnp.int32(0), params
-        )
-        assert not bool(done)
-        assert int(new_state.step) == 1
+        config = EnvConfig(max_steps=100)
+        env = VecEnv(_PixelEnv(), num_envs=1)
+        _, states = env.reset(_RNG, config)
+        actions = jnp.zeros(1, dtype=jnp.int32)
+        _, new_states, _, done, _ = env.step(_RNG, states, actions, config)
+        assert not bool(done[0])
+        assert int(new_states.step[0]) == 1
 
-    def test_step_env_jit_compatible(self):
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, _PARAMS)
-        obs, new_state, reward, done, _ = jax.jit(env.step_env)(
-            _RNG, state, jnp.int32(0), _PARAMS
+    def test_auto_reset_jit_compatible(self):
+        env = VecEnv(_PixelEnv(), num_envs=2)
+        _, states = env.reset(_RNG, _PARAMS)
+        actions = jnp.zeros(2, dtype=jnp.int32)
+        obs, new_states, reward, done, _ = jax.jit(env.step)(
+            _RNG, states, actions, _PARAMS
         )
-        assert obs.shape == (4, 4, 3)
+        assert obs.shape == (2, 4, 4, 3)

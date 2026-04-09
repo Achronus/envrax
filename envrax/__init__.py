@@ -1,4 +1,4 @@
-from envrax.base import EnvParams, EnvState, JaxEnv
+from envrax.base import EnvConfig, EnvState, JaxEnv
 from envrax.envs import EnvGroup, EnvSet
 from envrax.error import MissingPackageError
 from envrax.make import make, make_multi, make_multi_vec, make_vec
@@ -27,7 +27,7 @@ __all__ = [
     "Discrete",
     "MultiDiscrete",
     "EnvGroup",
-    "EnvParams",
+    "EnvConfig",
     "EnvSet",
     "EnvState",
     "EpisodeDiscount",

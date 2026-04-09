@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 import chex
 import numpy as np
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.wrappers.base import Wrapper
 
 
@@ -39,7 +39,7 @@ class RecordVideo(Wrapper):
         self._frames: List[np.ndarray] = []
         self._episode_id: int = 0
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
         """
         Reset the environment and begin a new recording.
 
@@ -47,8 +47,8 @@ class RecordVideo(Wrapper):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -57,7 +57,7 @@ class RecordVideo(Wrapper):
         state : Any
             Initial environment state.
         """
-        obs, state = self._env.reset(rng, params)
+        obs, state = self._env.reset(rng, config)
         inner = self.unwrapped
         if hasattr(inner, "render"):
             self._frames = [np.asarray(inner.render(state))]
@@ -70,7 +70,7 @@ class RecordVideo(Wrapper):
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Advance the environment by one step and record the frame.
@@ -85,8 +85,8 @@ class RecordVideo(Wrapper):
             Current environment state.
         action : chex.Array
             int32 — Action index.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -101,7 +101,7 @@ class RecordVideo(Wrapper):
         info : Dict[str, Any]
             Pass-through info dict from the inner environment.
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, params)
+        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
         inner = self.unwrapped
         if hasattr(inner, "render"):
             self._frames.append(np.asarray(inner.render(new_state)))

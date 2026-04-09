@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvParams, EnvState
+from envrax.base import EnvConfig, EnvState
 
 
 class TestEnvState:
@@ -18,16 +18,16 @@ class TestEnvState:
         assert not bool(new_state.done)
 
 
-class TestEnvParams:
+class TestEnvConfig:
     def test_default(self):
-        params = EnvParams()
-        assert params.max_steps == 1000
+        config = EnvConfig()
+        assert config.max_steps == 1000
 
     def test_custom(self):
-        params = EnvParams(max_steps=500)
-        assert params.max_steps == 500
+        config = EnvConfig(max_steps=500)
+        assert config.max_steps == 500
 
     def test_replace(self):
-        params = EnvParams()
-        new_params = params.replace(max_steps=2000)
-        assert new_params.max_steps == 2000
+        config = EnvConfig()
+        new_config = config.replace(max_steps=2000)
+        assert new_config.max_steps == 2000

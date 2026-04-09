@@ -3,7 +3,7 @@ from typing import Any, Dict, Self, Tuple, overload
 
 import chex
 
-from envrax.base import EnvParams, EnvState, JaxEnv
+from envrax.base import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Space
 
 
@@ -50,7 +50,7 @@ class Wrapper(JaxEnv):
     Abstract base class for JaxEnv wrappers.
 
     Subclasses must implement `reset` and `step` with the JaxEnv API
-    signatures: `reset(rng, params)` and `step(rng, state, action, params)`.
+    signatures: `reset(rng, config)` and `step(rng, state, action, config)`.
 
     The `observation_space` and `action_space` properties delegate to the
     inner environment by default and may be overridden when the wrapper
@@ -87,7 +87,7 @@ class Wrapper(JaxEnv):
 
     @abstractmethod
     def reset(
-        self, rng: chex.PRNGKey, params: EnvParams
+        self, rng: chex.PRNGKey, config: EnvConfig
     ) -> Tuple[chex.Array, EnvState]:
         """Reset the environment and return the initial observation and state."""
         raise NotImplementedError()
@@ -98,7 +98,7 @@ class Wrapper(JaxEnv):
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
         """Advance the environment by one step."""
         raise NotImplementedError()

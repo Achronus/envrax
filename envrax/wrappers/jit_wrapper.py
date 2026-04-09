@@ -5,7 +5,7 @@ import chex
 import jax
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.wrappers.base import Wrapper
 
 
@@ -34,14 +34,14 @@ class JitWrapper(Wrapper):
         self._jit_reset = jax.jit(env.reset)
         self._jit_step = jax.jit(env.step)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
-        return self._jit_reset(rng, params)
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
+        return self._jit_reset(rng, config)
 
     def step(
         self,
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
-        return self._jit_step(rng, state, action, params)
+        return self._jit_step(rng, state, action, config)

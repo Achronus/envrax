@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.base import EnvConfig, JaxEnv
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 
@@ -23,7 +23,7 @@ class NormalizeObservation(Wrapper):
     def __init__(self, env: JaxEnv) -> None:
         super().__init__(env)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
         """
         Reset and return a normalised initial observation.
 
@@ -31,8 +31,8 @@ class NormalizeObservation(Wrapper):
         ----------
         rng : chex.PRNGKey
             JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -41,7 +41,7 @@ class NormalizeObservation(Wrapper):
         state : Any
             Inner environment state.
         """
-        obs, state = self._env.reset(rng, params)
+        obs, state = self._env.reset(rng, config)
         return obs.astype(jnp.float32) / jnp.float32(255.0), state
 
     def step(
@@ -49,7 +49,7 @@ class NormalizeObservation(Wrapper):
         rng: chex.PRNGKey,
         state: Any,
         action: chex.Array,
-        params: EnvParams,
+        config: EnvConfig,
     ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step and return a normalised observation.
@@ -62,8 +62,8 @@ class NormalizeObservation(Wrapper):
             Current environment state.
         action : chex.Array
             Action to take.
-        params : EnvParams
-            Environment parameters.
+        config : EnvConfig
+            Environment configuration.
 
         Returns
         -------
@@ -78,7 +78,7 @@ class NormalizeObservation(Wrapper):
         info : Dict[str, Any]
             Environment metadata.
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, params)
+        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
         return (
             obs.astype(jnp.float32) / jnp.float32(255.0),
             new_state,
