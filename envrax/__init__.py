@@ -3,7 +3,7 @@ from envrax.envs import EnvGroup, EnvSet
 from envrax.error import MissingPackageError
 from envrax.make import make, make_multi, make_multi_vec, make_vec
 from envrax.registry import make_env, register, registered_names
-from envrax.spaces import Box, Discrete, Space
+from envrax.spaces import Box, Discrete, MultiDiscrete, Space, batch_space
 from envrax.wrappers import (
     ClipReward,
     EpisodeDiscount,
@@ -25,6 +25,7 @@ __all__ = [
     "Box",
     "ClipReward",
     "Discrete",
+    "MultiDiscrete",
     "EnvGroup",
     "EnvParams",
     "EnvSet",
@@ -43,6 +44,7 @@ __all__ = [
     "RecordVideo",
     "ResizeObservation",
     "Space",
+    "batch_space",
     "VmapEnv",
     "Wrapper",
     "make",

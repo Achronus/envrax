@@ -9,7 +9,7 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
     """
     Register an environment class under a given name.
 
-    Called on package import by downstream packages (atarax, proxen, labrax)
+    Called on package import by downstream packages
     to make their environments available via `envrax.make()`.
 
     Parameters

@@ -53,13 +53,13 @@ class JaxEnv(ABC):
     @property
     @abstractmethod
     def observation_space(self) -> Space:
-        """Returns the observation space (Box or Discrete)."""
+        """Returns the observation space."""
         ...
 
     @property
     @abstractmethod
     def action_space(self) -> Space:
-        """Returns the action space (always Discrete for these suites)."""
+        """Returns the action space."""
         ...
 
     @abstractmethod
@@ -98,7 +98,7 @@ class JaxEnv(ABC):
         params: EnvParams,
     ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
         """
-        Pure function. Returns (obs, new_state, reward, done, info).
+        Takes an action through the environment.
 
         Parameters
         ----------

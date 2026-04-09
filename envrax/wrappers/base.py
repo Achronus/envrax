@@ -4,7 +4,7 @@ from typing import Any, Dict, Self, Tuple, overload
 import chex
 
 from envrax.base import EnvParams, EnvState, JaxEnv
-from envrax.spaces import Box, Discrete
+from envrax.spaces import Space
 
 
 class _WrapperFactory:
@@ -109,11 +109,11 @@ class Wrapper(JaxEnv):
         return self._env.unwrapped if isinstance(self._env, Wrapper) else self._env
 
     @property
-    def observation_space(self) -> Box:
+    def observation_space(self) -> Space:
         """Observation space of the inner environment."""
         return self._env.observation_space
 
     @property
-    def action_space(self) -> Discrete:
+    def action_space(self) -> Space:
         """Action space of the inner environment."""
         return self._env.action_space
