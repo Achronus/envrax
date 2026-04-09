@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple
 
 import chex
-import jax
 
 from envrax.spaces import Space
 
@@ -125,43 +124,6 @@ class JaxEnv(ABC):
             Auxiliary diagnostic information.
         """
         ...
-
-    def step_env(
-        self,
-        rng: chex.PRNGKey,
-        state: EnvState,
-        action: chex.Array,
-        params: EnvParams,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
-        """
-        Wraps step() to auto-reset on episode end.
-
-        When done is True, returns the observation from a fresh reset
-        instead of the terminal observation. Override only if custom
-        reset behaviour is needed.
-
-        Parameters
-        ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : EnvState
-            Current environment state.
-        action : chex.Array
-            Action to take.
-        params : EnvParams
-            Static environment configuration.
-
-        Returns
-        -------
-        Tuple of (obs, new_state, reward, done, info), where obs/new_state
-        come from reset if done is True.
-        """
-        obs, new_state, reward, done, info = self.step(rng, state, action, params)
-        reset_rng, _ = jax.random.split(rng)
-        reset_obs, reset_state = self.reset(reset_rng, params)
-        final_obs = jax.lax.cond(done, lambda: reset_obs, lambda: obs)
-        final_state = jax.lax.cond(done, lambda: reset_state, lambda: new_state)
-        return final_obs, final_state, reward, done, info
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}"

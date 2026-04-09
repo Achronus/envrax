@@ -13,7 +13,6 @@ from envrax.wrappers.record_episode_statistics import (
 from envrax.wrappers.record_video import RecordVideo
 from envrax.wrappers.resize import ResizeObservation
 from envrax.wrappers.utils import resize, to_gray
-from envrax.wrappers.vmap_env import VmapEnv
 
 __all__ = [
     "ClipReward",
@@ -28,7 +27,6 @@ __all__ = [
     "RecordEpisodeStatistics",
     "RecordVideo",
     "ResizeObservation",
-    "VmapEnv",
     "Wrapper",
     "_WrapperFactory",
     "resize",
