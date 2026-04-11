@@ -1,9 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generic, Tuple, TypeVar
 
 import chex
 
 from envrax.spaces import Space
+
+ObsSpaceT = TypeVar("ObsSpaceT", bound=Space)
+ActSpaceT = TypeVar("ActSpaceT", bound=Space)
+StateT = TypeVar("StateT", bound="EnvState")
 
 
 @chex.dataclass
@@ -16,12 +20,15 @@ class EnvState:
 
     Parameters
     ----------
+    rng : chex.PRNGKey
+        JAX PRNG key
     step : chex.Array
-        Current timestep within the episode.
+        Current timestep within the episode
     done : chex.Array
-        bool scalar — episode termination flag.
+        bool scalar — episode termination flag
     """
 
+    rng: chex.PRNGKey
     step: chex.Array
     done: chex.Array
 
@@ -30,7 +37,7 @@ class EnvState:
 class EnvConfig:
     """
     Static environment configuration. Set once at construction, never changed.
-    Controls things like max_steps, reward scaling, difficulty, etc.
+    Controls things like max steps, reward scaling, difficulty, etc.
 
     Parameters
     ----------
@@ -41,87 +48,85 @@ class EnvConfig:
     max_steps: int = 1000
 
 
-class JaxEnv(ABC):
+class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
     """
     Base class for all JAX-native environments.
 
-    Every method is a pure function — no side effects, no mutation.
-    State is passed explicitly; environments are stateless Python objects.
+    Generic over the observation space, action space, and state types so
+    that subclasses and wrappers get accurate type info without runtime
+    casts. Subclasses pin all three:
+
+        class BallEnv(JaxEnv[Box, Discrete, BallState]): ...
+
+    Parameters
+    ----------
+    config : EnvConfig (optional)
+        Static environment configuration. Defaults to `EnvConfig()`.
     """
+
+    def __init__(self, config: EnvConfig | None = None) -> None:
+        self.config = config if config is not None else EnvConfig()
 
     @property
     @abstractmethod
-    def observation_space(self) -> Space:
+    def observation_space(self) -> ObsSpaceT:
         """Returns the observation space."""
         ...
 
     @property
     @abstractmethod
-    def action_space(self) -> Space:
+    def action_space(self) -> ActSpaceT:
         """Returns the action space."""
         ...
 
     @abstractmethod
-    def reset(
-        self,
-        rng: chex.PRNGKey,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, EnvState]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
-        Pure function. Returns (observation, initial_state).
-
-        All randomness flows through rng — no global state.
+        Set the environment to a starting state.
+        Returns `(observation, initial_state)`.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Static environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs : chex.Array
-            Initial observation.
-        state : EnvState
-            Initial environment state.
+            Initial observation
+        state : StateT
+            Initial environment state with `rng` embedded
         """
         ...
 
     @abstractmethod
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: EnvState,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Takes an action through the environment.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : EnvState
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            Integer scalar in [0, num_actions).
-        config : EnvConfig
-            Static environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs : chex.Array
-            Observation after the step.
-        new_state : EnvState
-            Updated environment state.
+            Observation after the step
+        new_state : StateT
+            Updated environment state
         reward : chex.Array
-            float32 scalar reward.
+            Scalar reward
         done : chex.Array
-            bool scalar — True when the episode has ended.
-        info : dict
-            Auxiliary diagnostic information.
+            bool scalar — `True` when the episode has ended, `False` otherwise
+        info : Dict[str, Any]
+            Auxiliary diagnostic information
         """
         ...
 
