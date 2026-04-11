@@ -134,3 +134,13 @@ class Wrapper(
     def action_space(self) -> ActSpaceT:
         """Action space of the inner environment."""
         return self._env.action_space
+
+
+type WrapperType = type[Wrapper] | _WrapperFactory
+"""
+A wrapper supplied to factory functions like `make()`.
+
+Either a `Wrapper` subclass (applied directly to an env) or a deferred
+factory returned by calling a parameterised wrapper class without an env
+(e.g. `ResizeObservation(h=84, w=84)`).
+"""

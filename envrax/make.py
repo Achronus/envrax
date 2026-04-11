@@ -1,5 +1,5 @@
 import pathlib
-from typing import List, Tuple, Type
+from typing import List, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -8,7 +8,7 @@ from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
 from envrax.base import EnvConfig, JaxEnv
 from envrax.registry import _REGISTRY
 from envrax.vec_env import VecEnv
-from envrax.wrappers.base import Wrapper, _WrapperFactory
+from envrax.wrappers.base import WrapperType
 from envrax.wrappers.jit_wrapper import JitWrapper
 
 
@@ -16,7 +16,7 @@ def make(
     name: str,
     *,
     config: EnvConfig | None = None,
-    wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
+    wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> Tuple[JaxEnv, EnvConfig]:
@@ -29,7 +29,7 @@ def make(
         Registered environment name
     config : EnvConfig (optional)
         Environment configuration. Defaults to the registered default config.
-    wrappers : List[Type[Wrapper] | _WrapperFactory] (optional)
+    wrappers : List[WrapperType] (optional)
         Wrapper classes or pre-configured factories applied innermost-first
         around the base env.
     jit_compile : bool (optional)
@@ -53,12 +53,12 @@ def make(
         If `name` is not registered.
     """
     if name not in _REGISTRY:
-        available = sorted(_REGISTRY)
+        available = sorted(_REGISTRY.keys())
         raise ValueError(f"Unknown environment: {name!r}. Available: {available}")
 
-    env_class, default_config = _REGISTRY[name]
-    resolved_config = config if config is not None else default_config
-    env: JaxEnv = env_class(config=resolved_config)
+    spec = _REGISTRY[name]
+    resolved_config = config if config is not None else spec.default_config
+    env: JaxEnv = spec.env_class(config=resolved_config)
 
     if wrappers:
         for w in wrappers:
@@ -78,7 +78,7 @@ def make_vec(
     n_envs: int,
     *,
     config: EnvConfig | None = None,
-    wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
+    wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> Tuple[VecEnv, EnvConfig]:
@@ -93,7 +93,7 @@ def make_vec(
         Number of parallel environments
     config : EnvConfig (optional)
         Environment configuration. Defaults to the registered default config.
-    wrappers : List[Type[Wrapper] | _WrapperFactory] (optional)
+    wrappers : List[WrapperType] (optional)
         Wrapper classes applied innermost-first. Applied before vectorisation.
     jit_compile : bool (optional)
         Run one warm-up `reset` + `step` to eagerly trigger XLA compilation.
@@ -131,7 +131,7 @@ def make_multi(
     names: List[str],
     *,
     config: EnvConfig | None = None,
-    wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
+    wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> List[Tuple[JaxEnv, EnvConfig]]:
@@ -153,7 +153,7 @@ def make_multi_vec(
     n_envs: int,
     *,
     config: EnvConfig | None = None,
-    wrappers: List[Type[Wrapper] | _WrapperFactory] | None = None,
+    wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> List[Tuple[VecEnv, EnvConfig]]:
