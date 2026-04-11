@@ -69,7 +69,7 @@ def make_env(name: str, **config_overrides) -> Tuple[JaxEnv, EnvConfig]:
         if config_overrides
         else default_config
     )
-    return env_class(), config
+    return env_class(config=config), config
 
 
 def registered_names() -> List[str]:

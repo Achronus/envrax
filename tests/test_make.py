@@ -26,7 +26,7 @@ class _PixState(EnvState):
     pass
 
 
-class _PixEnv(JaxEnv):
+class _PixEnv(JaxEnv[Box, Discrete, _PixState]):
     """Minimal env returning uint8[8, 8, 3] RGB observations."""
 
     @property
@@ -37,23 +37,23 @@ class _PixEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=4)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig):
+    def reset(self, rng: chex.PRNGKey):
         obs = jnp.full((8, 8, 3), 128, dtype=jnp.uint8)
-        state = _PixState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = _PixState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, config):
+    def step(self, state, action):
         obs = jnp.full((8, 8, 3), 64, dtype=jnp.uint8)
         new_state = state.replace(
             step=state.step + 1,
-            done=jnp.bool_(state.step + 1 >= config.max_steps),
+            done=jnp.bool_(state.step + 1 >= self.config.max_steps),
         )
         reward = jnp.float32(1.0)
         return obs, new_state, reward, new_state.done, {}
 
 
-_RNG = jax.random.PRNGKey(0)
-_PARAMS = EnvConfig(max_steps=10)
+_RNG = jax.random.key(0)
+_CONFIG = EnvConfig(max_steps=10)
 _ENV_NAME = "TestPixEnv-v0"
 
 
@@ -66,7 +66,7 @@ _ENV_NAME = "TestPixEnv-v0"
 def _register_and_cleanup():
     """Register the test env before each test and clean up after."""
     _REGISTRY.pop(_ENV_NAME, None)
-    register(_ENV_NAME, _PixEnv, _PARAMS)
+    register(_ENV_NAME, _PixEnv, _CONFIG)
     yield
     _REGISTRY.pop(_ENV_NAME, None)
 
@@ -93,17 +93,17 @@ class TestMake:
 
     def test_default_config_from_registry(self):
         _, config = make(_ENV_NAME, jit_compile=False)
-        assert config.max_steps == _PARAMS.max_steps
+        assert config.max_steps == _CONFIG.max_steps
 
     def test_reset_shape(self):
-        env, config = make(_ENV_NAME, jit_compile=False)
-        obs, _ = env.reset(_RNG, config)
+        env, _ = make(_ENV_NAME, jit_compile=False)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8, 3))
 
     def test_step_shape(self):
-        env, config = make(_ENV_NAME, jit_compile=False)
-        _, state = env.reset(_RNG, config)
-        obs, _, reward, done, _ = env.step(_RNG, state, jnp.int32(0), config)
+        env, _ = make(_ENV_NAME, jit_compile=False)
+        _, state = env.reset(_RNG)
+        obs, _, reward, done, _ = env.step(state, jnp.int32(0))
         chex.assert_shape(obs, (8, 8, 3))
         chex.assert_rank(reward, 0)
         chex.assert_rank(done, 0)
@@ -113,10 +113,10 @@ class TestMake:
         assert isinstance(env, GrayscaleObservation)
 
     def test_wrapper_changes_obs_shape(self):
-        env, config = make(
+        env, _ = make(
             _ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False
         )
-        obs, _ = env.reset(_RNG, config)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8))
 
     def test_jit_compile_returns_jit_wrapper(self):
@@ -124,8 +124,8 @@ class TestMake:
         assert isinstance(env, JitWrapper)
 
     def test_jit_compile_reset_works(self):
-        env, config = make(_ENV_NAME, jit_compile=True)
-        obs, _ = env.reset(_RNG, config)
+        env, _ = make(_ENV_NAME, jit_compile=True)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8, 3))
 
 
@@ -135,21 +135,21 @@ class TestMake:
 
 
 class TestMakeVec:
-    def test_returns_vmap_env(self):
+    def test_returns_vec_env(self):
         vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
         assert isinstance(vec_env, VecEnv)
         assert vec_env.num_envs == 4
 
     def test_reset_shape(self):
-        vec_env, config = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        obs, _ = vec_env.reset(_RNG, config)
+        vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
+        obs, _ = vec_env.reset(seed=0)
         chex.assert_shape(obs, (4, 8, 8, 3))
 
     def test_step_shape(self):
-        vec_env, config = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        _, states = vec_env.reset(_RNG, config)
+        vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
+        _, states = vec_env.reset(seed=0)
         obs, _, rewards, dones, _ = vec_env.step(
-            _RNG, states, jnp.zeros(4, dtype=jnp.int32), config
+            states, jnp.zeros(4, dtype=jnp.int32)
         )
         chex.assert_shape(obs, (4, 8, 8, 3))
         chex.assert_shape(rewards, (4,))
@@ -185,9 +185,9 @@ class TestMakeMulti:
 
 
 class TestMakeMultiVec:
-    def test_returns_list_of_vmap_envs(self):
+    def test_returns_list_of_vec_envs(self):
         results = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
         assert len(results) == 2
-        for vec_env, config in results:
+        for vec_env, _ in results:
             assert isinstance(vec_env, VecEnv)
             assert vec_env.num_envs == 2

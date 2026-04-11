@@ -17,7 +17,7 @@ class _DummyState(EnvState):
     pass
 
 
-class _DummyEnv(JaxEnv):
+class _DummyEnv(JaxEnv[Box, Discrete, _DummyState]):
     @property
     def observation_space(self) -> Box:
         return Box(low=0, high=1, shape=(4,), dtype=jnp.float32)
@@ -26,16 +26,16 @@ class _DummyEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=2)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig):
+    def reset(self, rng: chex.PRNGKey):
         obs = jnp.zeros((4,), dtype=jnp.float32)
-        state = _DummyState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = _DummyState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, config):
+    def step(self, state, action):
         obs = jnp.zeros((4,), dtype=jnp.float32)
         new_state = state.replace(step=state.step + 1)
         reward = jnp.float32(0.0)
-        done = new_state.step >= config.max_steps
+        done = new_state.step >= self.config.max_steps
         return obs, new_state, reward, done, {}
 
 
@@ -69,10 +69,10 @@ class TestRegistry:
 
     def test_env_reset_step(self):
         register("DummyEnv-v0", _DummyEnv, EnvConfig())
-        env, config = make_env("DummyEnv-v0")
-        rng = jax.random.PRNGKey(0)
-        obs, state = env.reset(rng, config)
+        env, _ = make_env("DummyEnv-v0")
+        rng = jax.random.key(0)
+        obs, state = env.reset(rng)
         assert obs.shape == (4,)
-        obs2, state2, reward, done, info = env.step(rng, state, jnp.int32(0), config)
+        obs2, state2, reward, done, info = env.step(state, jnp.int32(0))
         assert obs2.shape == (4,)
         assert int(state2.step) == 1

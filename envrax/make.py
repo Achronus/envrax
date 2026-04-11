@@ -44,7 +44,8 @@ def make(
     env : JaxEnv
         Configured environment, wrapped in `JitWrapper` when `jit_compile=True`.
     config : EnvConfig
-        Environment configuration used by the environment.
+        Environment configuration used by the environment (also accessible
+        via `env.config`).
 
     Raises
     ------
@@ -57,7 +58,7 @@ def make(
 
     env_class, default_config = _REGISTRY[name]
     resolved_config = config if config is not None else default_config
-    env: JaxEnv = env_class()
+    env: JaxEnv = env_class(config=resolved_config)
 
     if wrappers:
         for w in wrappers:
@@ -65,9 +66,9 @@ def make(
 
     if jit_compile:
         env = JitWrapper(env, cache_dir=cache_dir)
-        _key = jax.random.PRNGKey(0)
-        _, _state = env.reset(_key, resolved_config)
-        env.step(_key, _state, env.action_space.sample(_key), resolved_config)
+        _key = jax.random.key(0)
+        _, _state = env.reset(_key)
+        env.step(_state, env.action_space.sample(_key))
 
     return env, resolved_config
 
@@ -82,14 +83,14 @@ def make_vec(
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> Tuple[VecEnv, EnvConfig]:
     """
-    Create a `VmapEnv` with `n_envs` parallel environments.
+    Create a `VecEnv` with `n_envs` parallel environments.
 
     Parameters
     ----------
     name : str
-        Registered environment name.
+        Registered environment name
     n_envs : int
-        Number of parallel environments.
+        Number of parallel environments
     config : EnvConfig (optional)
         Environment configuration. Defaults to the registered default config.
     wrappers : List[Type[Wrapper] | _WrapperFactory] (optional)
@@ -102,10 +103,11 @@ def make_vec(
 
     Returns
     -------
-    vec_env : VmapEnv
-        Vectorised environment.
+    vec_env : VecEnv
+        Vectorised environment
     config : EnvConfig
-        Environment configuration used by the environment.
+        Environment configuration used by the environment (also accessible
+        via `vec_env.config`).
     """
     inner_env, resolved_config = make(
         name,
@@ -119,9 +121,8 @@ def make_vec(
 
     if jit_compile:
         setup_cache(cache_dir)
-        _key = jax.random.PRNGKey(0)
-        _, _states = vec_env.reset(_key, resolved_config)
-        vec_env.step(_key, _states, jnp.zeros(n_envs, dtype=jnp.int32), resolved_config)
+        _, _states = vec_env.reset(seed=0)
+        vec_env.step(_states, jnp.zeros(n_envs, dtype=jnp.int32))
 
     return vec_env, resolved_config
 
@@ -156,7 +157,7 @@ def make_multi_vec(
     jit_compile: bool = True,
     cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
 ) -> List[Tuple[VecEnv, EnvConfig]]:
-    """Create one `(VmapEnv, EnvConfig)` tuple per entry in `names`."""
+    """Create one `(VecEnv, EnvConfig)` tuple per entry in `names`."""
     return [
         make_vec(
             name,
