@@ -1,10 +1,11 @@
 from abc import abstractmethod
-from typing import Any, Dict, Self, Tuple, overload
+from typing import Any, Dict, Generic, Self, Tuple, TypeVar, overload
 
 import chex
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
-from envrax.spaces import Space
+from envrax.base import ActSpaceT, EnvState, JaxEnv, ObsSpaceT, StateT
+
+InnerStateT = TypeVar("InnerStateT", bound=EnvState, default=StateT)
 
 
 class _WrapperFactory:
@@ -45,12 +46,29 @@ class _WrapperFactory:
         return self._cls(env, **self._kwargs)
 
 
-class Wrapper(JaxEnv):
+class Wrapper(
+    JaxEnv[ObsSpaceT, ActSpaceT, StateT],
+    Generic[ObsSpaceT, ActSpaceT, StateT, InnerStateT],
+):
     """
     Abstract base class for JaxEnv wrappers.
 
-    Subclasses must implement `reset` and `step` with the JaxEnv API
-    signatures: `reset(rng, config)` and `step(rng, state, action, config)`.
+    Uses generics over the inner env's observation space, action space, outer
+    state type (`StateT`), and inner state type (`InnerStateT`). The
+    `InnerStateT` parameter defaults to `StateT`, so wrappers
+    that preserve the inner state type only need to declare three params.
+
+    **Pass-through wrappers** preserve the inner env's state type. They
+    declare three TypeVars and let `InnerStateT` default to `StateT`:
+
+        class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT]): ...
+
+    **Stateful wrappers** introduce their own outer state type that wraps
+    the inner state. They declare all four TypeVars, pinning `StateT` to
+    their wrapper-specific class and leaving `InnerStateT` parametric:
+
+        class FrameStackObservation(Wrapper[Box, ActSpaceT, FrameStackState, InnerStateT]):
+            def __init__(self, env: JaxEnv[Box, ActSpaceT, InnerStateT], ...) -> None: ...
 
     The `observation_space` and `action_space` properties delegate to the
     inner environment by default and may be overridden when the wrapper
@@ -66,6 +84,8 @@ class Wrapper(JaxEnv):
         Inner environment to wrap.
     """
 
+    _env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT]
+
     @overload
     def __new__(cls, env: None = ..., **kwargs) -> "_WrapperFactory": ...
 
@@ -79,27 +99,24 @@ class Wrapper(JaxEnv):
             return factory
         return super().__new__(cls)
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT]) -> None:
+        super().__init__(env.config)
         self._env = env
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}<{self._env!r}>"
 
     @abstractmethod
-    def reset(
-        self, rng: chex.PRNGKey, config: EnvConfig
-    ) -> Tuple[chex.Array, EnvState]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """Reset the environment and return the initial observation and state."""
         raise NotImplementedError()
 
     @abstractmethod
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """Advance the environment by one step."""
         raise NotImplementedError()
 
@@ -109,11 +126,11 @@ class Wrapper(JaxEnv):
         return self._env.unwrapped if isinstance(self._env, Wrapper) else self._env
 
     @property
-    def observation_space(self) -> Space:
+    def observation_space(self) -> ObsSpaceT:
         """Observation space of the inner environment."""
         return self._env.observation_space
 
     @property
-    def action_space(self) -> Space:
+    def action_space(self) -> ActSpaceT:
         """Action space of the inner environment."""
         return self._env.action_space

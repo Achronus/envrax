@@ -1,7 +1,6 @@
 import chex
 import jax
 import jax.numpy as jnp
-import pytest
 
 from envrax.base import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Box, Discrete, MultiDiscrete
@@ -27,7 +26,7 @@ class _PixelState(EnvState):
     pass
 
 
-class _PixelEnv(JaxEnv):
+class _PixelEnv(JaxEnv[Box, Discrete, _PixelState]):
     """Minimal env returning uint8[4, 4, 3] RGB observations."""
 
     @property
@@ -38,175 +37,179 @@ class _PixelEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=2)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig):
+    def reset(self, rng: chex.PRNGKey):
         obs = jnp.full((4, 4, 3), 128, dtype=jnp.uint8)
-        state = _PixelState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = _PixelState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, config):
+    def step(self, state, action):
         obs = jnp.full((4, 4, 3), 64, dtype=jnp.uint8)
         new_state = state.replace(
             step=state.step + 1,
-            done=jnp.bool_(state.step + 1 >= config.max_steps),
+            done=jnp.bool_(state.step + 1 >= self.config.max_steps),
         )
         reward = jnp.float32(1.0)
         done = new_state.done
         return obs, new_state, reward, done, {}
 
 
-_RNG = jax.random.PRNGKey(42)
-_PARAMS = EnvConfig(max_steps=10)
+_RNG = jax.random.key(42)
+_CONFIG = EnvConfig(max_steps=10)
+
+
+def _env() -> _PixelEnv:
+    return _PixelEnv(config=_CONFIG)
 
 
 class TestClipReward:
     def test_positive_reward_clipped(self):
-        env = ClipReward(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, reward, _, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = ClipReward(_env())
+        _, state = env.reset(_RNG)
+        _, _, reward, _, _ = env.step(state, jnp.int32(0))
         assert float(reward) == 1.0  # sign(1.0) = 1.0
 
     def test_negative_reward_clipped(self):
         class _NegRewardEnv(_PixelEnv):
-            def step(self, rng, state, action, config):
-                obs, new_state, _, done, info = super().step(rng, state, action, config)
+            def step(self, state, action):
+                obs, new_state, _, done, info = super().step(state, action)
                 return obs, new_state, jnp.float32(-5.0), done, info
 
-        env = ClipReward(_NegRewardEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, reward, _, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = ClipReward(_NegRewardEnv(config=_CONFIG))
+        _, state = env.reset(_RNG)
+        _, _, reward, _, _ = env.step(state, jnp.int32(0))
         assert float(reward) == -1.0
 
 
 class TestEpisodeDiscount:
     def test_discount_is_one_when_not_done(self):
-        env = EpisodeDiscount(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, _, discount, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = EpisodeDiscount(_env())
+        _, state = env.reset(_RNG)
+        _, _, _, discount, _ = env.step(state, jnp.int32(0))
         assert float(discount) == 1.0
 
     def test_discount_dtype(self):
-        env = EpisodeDiscount(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, _, discount, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = EpisodeDiscount(_env())
+        _, state = env.reset(_RNG)
+        _, _, _, discount, _ = env.step(state, jnp.int32(0))
         assert discount.dtype == jnp.float32
 
 
 class TestExpandDims:
     def test_reward_shape(self):
-        env = ExpandDims(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, reward, done, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = ExpandDims(_env())
+        _, state = env.reset(_RNG)
+        _, _, reward, done, _ = env.step(state, jnp.int32(0))
         assert reward.shape == (1,)
         assert done.shape == (1,)
 
 
 class TestGrayscaleObservation:
     def test_obs_shape(self):
-        env = GrayscaleObservation(_PixelEnv())
-        obs, _ = env.reset(_RNG, _PARAMS)
+        env = GrayscaleObservation(_env())
+        obs, _ = env.reset(_RNG)
         assert obs.shape == (4, 4)
 
     def test_obs_dtype(self):
-        env = GrayscaleObservation(_PixelEnv())
-        obs, _ = env.reset(_RNG, _PARAMS)
+        env = GrayscaleObservation(_env())
+        obs, _ = env.reset(_RNG)
         assert obs.dtype == jnp.uint8
 
     def test_observation_space(self):
-        env = GrayscaleObservation(_PixelEnv())
+        env = GrayscaleObservation(_env())
         assert env.observation_space.shape == (4, 4)
 
 
 class TestResizeObservation:
     def test_obs_shape(self):
-        env = ResizeObservation(GrayscaleObservation(_PixelEnv()), h=8, w=8)
-        obs, _ = env.reset(_RNG, _PARAMS)
+        env = ResizeObservation(GrayscaleObservation(_env()), h=8, w=8)
+        obs, _ = env.reset(_RNG)
         assert obs.shape == (8, 8)
 
     def test_observation_space(self):
-        env = ResizeObservation(GrayscaleObservation(_PixelEnv()), h=8, w=8)
+        env = ResizeObservation(GrayscaleObservation(_env()), h=8, w=8)
         assert env.observation_space.shape == (8, 8)
 
 
 class TestFrameStackObservation:
     def test_obs_shape(self):
-        inner = ResizeObservation(GrayscaleObservation(_PixelEnv()), h=4, w=4)
+        inner = ResizeObservation(GrayscaleObservation(_env()), h=4, w=4)
         env = FrameStackObservation(inner, n_stack=4)
-        obs, _ = env.reset(_RNG, _PARAMS)
+        obs, _ = env.reset(_RNG)
         assert obs.shape == (4, 4, 4)
 
     def test_stack_updates_on_step(self):
-        inner = ResizeObservation(GrayscaleObservation(_PixelEnv()), h=4, w=4)
+        inner = ResizeObservation(GrayscaleObservation(_env()), h=4, w=4)
         env = FrameStackObservation(inner, n_stack=4)
-        obs, state = env.reset(_RNG, _PARAMS)
-        obs2, _, _, _, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        obs, state = env.reset(_RNG)
+        obs2, _, _, _, _ = env.step(state, jnp.int32(0))
         assert obs2.shape == (4, 4, 4)
 
 
 class TestNormalizeObservation:
     def test_obs_range(self):
-        env = NormalizeObservation(_PixelEnv())
-        obs, _ = env.reset(_RNG, _PARAMS)
+        env = NormalizeObservation(_env())
+        obs, _ = env.reset(_RNG)
         assert jnp.all(obs >= 0.0) and jnp.all(obs <= 1.0)
 
     def test_obs_dtype(self):
-        env = NormalizeObservation(_PixelEnv())
-        obs, _ = env.reset(_RNG, _PARAMS)
+        env = NormalizeObservation(_env())
+        obs, _ = env.reset(_RNG)
         assert obs.dtype == jnp.float32
 
 
 class TestRecordEpisodeStatistics:
     def test_episode_key_in_info(self):
-        env = RecordEpisodeStatistics(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
-        _, _, _, _, info = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = RecordEpisodeStatistics(_env())
+        _, state = env.reset(_RNG)
+        _, _, _, _, info = env.step(state, jnp.int32(0))
         assert "episode" in info
         assert "r" in info["episode"]
         assert "l" in info["episode"]
 
     def test_return_accumulates(self):
-        env = RecordEpisodeStatistics(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
+        env = RecordEpisodeStatistics(_env())
+        _, state = env.reset(_RNG)
         for _ in range(3):
-            _, state, _, _, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+            _, state, _, _, _ = env.step(state, jnp.int32(0))
         # episode_return should be accumulating (non-zero)
         assert float(state.episode_return) > 0.0
 
 
 class TestVecEnv:
     def test_reset_batch_shape(self):
-        env = VecEnv(_PixelEnv(), num_envs=4)
-        obs, states = env.reset(_RNG, _PARAMS)
+        env = VecEnv(_env(), num_envs=4)
+        obs, _ = env.reset(seed=42)
         assert obs.shape == (4, 4, 4, 3)
 
     def test_step_batch_shape(self):
-        env = VecEnv(_PixelEnv(), num_envs=4)
-        _, states = env.reset(_RNG, _PARAMS)
+        env = VecEnv(_env(), num_envs=4)
+        _, states = env.reset(seed=42)
         actions = jnp.zeros(4, dtype=jnp.int32)
-        obs, _, rewards, dones, _ = env.step(_RNG, states, actions, _PARAMS)
+        obs, _, rewards, dones, _ = env.step(states, actions)
         assert obs.shape == (4, 4, 4, 3)
         assert rewards.shape == (4,)
         assert dones.shape == (4,)
 
     def test_single_observation_space(self):
-        env = VecEnv(_PixelEnv(), num_envs=8)
+        env = VecEnv(_env(), num_envs=8)
         space = env.single_observation_space
         assert isinstance(space, Box)
         assert space.shape == (4, 4, 3)
 
     def test_single_action_space(self):
-        env = VecEnv(_PixelEnv(), num_envs=8)
+        env = VecEnv(_env(), num_envs=8)
         space = env.single_action_space
         assert isinstance(space, Discrete)
         assert space.n == 2
 
     def test_observation_space_batched(self):
-        env = VecEnv(_PixelEnv(), num_envs=8)
+        env = VecEnv(_env(), num_envs=8)
         space = env.observation_space
         assert isinstance(space, Box)
         assert space.shape == (8, 4, 4, 3)
 
     def test_action_space_batched(self):
-        env = VecEnv(_PixelEnv(), num_envs=8)
+        env = VecEnv(_env(), num_envs=8)
         space = env.action_space
         assert isinstance(space, MultiDiscrete)
         assert space.nvec == (2,) * 8
@@ -214,108 +217,96 @@ class TestVecEnv:
 
 class TestJitCompile:
     def test_jit_reset(self):
-        env = _PixelEnv()
-        obs, state = jax.jit(env.reset)(_RNG, _PARAMS)
+        env = _env()
+        obs, _ = jax.jit(env.reset)(_RNG)
         assert obs.shape == (4, 4, 3)
 
     def test_jit_step(self):
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, _PARAMS)
-        obs, _, reward, done, _ = jax.jit(env.step)(_RNG, state, jnp.int32(0), _PARAMS)
+        env = _env()
+        _, state = env.reset(_RNG)
+        obs, _, reward, _, _ = jax.jit(env.step)(state, jnp.int32(0))
         assert obs.shape == (4, 4, 3)
         assert reward.dtype == jnp.float32
 
     def test_jit_wrapped_env(self):
-        env = GrayscaleObservation(_PixelEnv())
-        obs, state = jax.jit(env.reset)(_RNG, _PARAMS)
-        obs2, _, _, _, _ = jax.jit(env.step)(_RNG, state, jnp.int32(0), _PARAMS)
+        env = GrayscaleObservation(_env())
+        obs, state = jax.jit(env.reset)(_RNG)
+        obs2, _, _, _, _ = jax.jit(env.step)(state, jnp.int32(0))
         assert obs.shape == (4, 4)
         assert obs2.shape == (4, 4)
 
 
 class TestScanRollout:
     def test_scan_rollout(self):
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, _PARAMS)
+        env = _env()
+        _, state = env.reset(_RNG)
 
-        def step_fn(carry, _):
-            state, rng = carry
-            rng, step_rng = jax.random.split(rng)
-            obs, new_state, reward, done, _ = env.step(
-                step_rng, state, jnp.int32(0), _PARAMS
-            )
-            return (new_state, rng), (obs, reward, done)
+        def step_fn(state, _):
+            obs, new_state, reward, done, _ = env.step(state, jnp.int32(0))
+            return new_state, (obs, reward, done)
 
-        (_, _), (obs_seq, reward_seq, done_seq) = jax.lax.scan(
-            step_fn, (state, _RNG), None, length=5
+        _, (obs_seq, reward_seq, done_seq) = jax.lax.scan(
+            step_fn, state, None, length=5
         )
         assert obs_seq.shape == (5, 4, 4, 3)
         assert reward_seq.shape == (5,)
         assert done_seq.shape == (5,)
 
     def test_scan_wrapped_env(self):
-        env = GrayscaleObservation(_PixelEnv())
-        _, state = env.reset(_RNG, _PARAMS)
+        env = GrayscaleObservation(_env())
+        _, state = env.reset(_RNG)
 
-        def step_fn(carry, _):
-            state, rng = carry
-            rng, step_rng = jax.random.split(rng)
-            obs, new_state, reward, done, _ = env.step(
-                step_rng, state, jnp.int32(0), _PARAMS
-            )
-            return (new_state, rng), obs
+        def step_fn(state, _):
+            obs, new_state, _, _, _ = env.step(state, jnp.int32(0))
+            return new_state, obs
 
-        (_, _), obs_seq = jax.lax.scan(step_fn, (state, _RNG), None, length=5)
+        _, obs_seq = jax.lax.scan(step_fn, state, None, length=5)
         assert obs_seq.shape == (5, 4, 4)
 
 
 class TestDeterminism:
     def test_reset_same_key_same_obs(self):
-        env = _PixelEnv()
-        obs1, _ = env.reset(_RNG, _PARAMS)
-        obs2, _ = env.reset(_RNG, _PARAMS)
+        env = _env()
+        obs1, _ = env.reset(_RNG)
+        obs2, _ = env.reset(_RNG)
         assert jnp.array_equal(obs1, obs2)
 
     def test_step_same_key_same_output(self):
-        env = _PixelEnv()
-        _, state = env.reset(_RNG, _PARAMS)
-        obs1, _, r1, d1, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
-        obs2, _, r2, d2, _ = env.step(_RNG, state, jnp.int32(0), _PARAMS)
+        env = _env()
+        _, state = env.reset(_RNG)
+        obs1, _, r1, d1, _ = env.step(state, jnp.int32(0))
+        obs2, _, r2, d2, _ = env.step(state, jnp.int32(0))
         assert jnp.array_equal(obs1, obs2)
         assert jnp.array_equal(r1, r2)
         assert jnp.array_equal(d1, d2)
 
     def test_different_keys_same_shape(self):
-        env = _PixelEnv()
-        obs1, _ = env.reset(jax.random.PRNGKey(0), _PARAMS)
-        obs2, _ = env.reset(jax.random.PRNGKey(1), _PARAMS)
+        env = _env()
+        obs1, _ = env.reset(jax.random.key(0))
+        obs2, _ = env.reset(jax.random.key(1))
         assert obs1.shape == obs2.shape
 
 
 class TestVecEnvAutoReset:
     def test_auto_reset_when_done(self):
-        config = EnvConfig(max_steps=1)
-        env = VecEnv(_PixelEnv(), num_envs=1)
-        _, states = env.reset(_RNG, config)
+        env = VecEnv(_PixelEnv(config=EnvConfig(max_steps=1)), num_envs=1)
+        _, states = env.reset(seed=0)
         actions = jnp.zeros(1, dtype=jnp.int32)
-        obs, new_states, reward, done, _ = env.step(_RNG, states, actions, config)
+        _, new_states, _, done, _ = env.step(states, actions)
         assert bool(done[0])
         assert int(new_states.step[0]) == 0
 
     def test_no_reset_when_not_done(self):
-        config = EnvConfig(max_steps=100)
-        env = VecEnv(_PixelEnv(), num_envs=1)
-        _, states = env.reset(_RNG, config)
+        env = VecEnv(_PixelEnv(config=EnvConfig(max_steps=100)), num_envs=1)
+        _, states = env.reset(seed=0)
         actions = jnp.zeros(1, dtype=jnp.int32)
-        _, new_states, _, done, _ = env.step(_RNG, states, actions, config)
+        _, new_states, _, done, _ = env.step(states, actions)
         assert not bool(done[0])
         assert int(new_states.step[0]) == 1
 
     def test_auto_reset_jit_compatible(self):
-        env = VecEnv(_PixelEnv(), num_envs=2)
-        _, states = env.reset(_RNG, _PARAMS)
+        env = VecEnv(_env(), num_envs=2)
+        _, states = env.reset(seed=0)
         actions = jnp.zeros(2, dtype=jnp.int32)
-        obs, new_states, reward, done, _ = jax.jit(env.step)(
-            _RNG, states, actions, _PARAMS
-        )
+        obs, _, _, _, _ = jax.jit(env.step)(states, actions)
         assert obs.shape == (2, 4, 4, 3)

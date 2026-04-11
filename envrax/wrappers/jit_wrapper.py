@@ -5,11 +5,11 @@ import chex
 import jax
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class JitWrapper(Wrapper):
+class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
     """
     Wrap a `JaxEnv` so that `reset` and `step` are compiled with
     `jax.jit` on construction.
@@ -25,7 +25,7 @@ class JitWrapper(Wrapper):
 
     def __init__(
         self,
-        env: JaxEnv,
+        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT],
         cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
     ) -> None:
         super().__init__(env)
@@ -34,14 +34,12 @@ class JitWrapper(Wrapper):
         self._jit_reset = jax.jit(env.reset)
         self._jit_step = jax.jit(env.step)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
-        return self._jit_reset(rng, config)
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+        return self._jit_reset(rng)
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
-        return self._jit_step(rng, state, action, config)
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        return self._jit_step(state, action)

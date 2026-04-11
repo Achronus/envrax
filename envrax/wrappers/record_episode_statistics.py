@@ -1,20 +1,24 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, JaxEnv
-from envrax.wrappers.base import Wrapper
+from envrax.base import ActSpaceT, EnvState, JaxEnv, ObsSpaceT
+from envrax.wrappers.base import InnerStateT, Wrapper
 
 
 @chex.dataclass
-class EpisodeStatisticsState:
+class EpisodeStatisticsState(EnvState, Generic[InnerStateT]):
     """
     State for `RecordEpisodeStatistics`.
 
+    Generic over the inner env's state type so `env_state` is precisely
+    typed when the wrapper is parameterised. The base `rng`/`step`/`done`
+    fields are forwarded copies from the inner state.
+
     Parameters
     ----------
-    env_state : Any
+    env_state : InnerStateT
         Inner environment state.
     episode_return : chex.Array
         Cumulative reward for the current episode. float32 scalar.
@@ -22,12 +26,14 @@ class EpisodeStatisticsState:
         Number of steps taken in the current episode. int32 scalar.
     """
 
-    env_state: Any
+    env_state: InnerStateT
     episode_return: chex.Array
     episode_length: chex.Array
 
 
-class RecordEpisodeStatistics(Wrapper):
+class RecordEpisodeStatistics(
+    Wrapper[ObsSpaceT, ActSpaceT, EpisodeStatisticsState[InnerStateT], InnerStateT]
+):
     """
     Records episode return and length.
 
@@ -41,31 +47,32 @@ class RecordEpisodeStatistics(Wrapper):
         Environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT]) -> None:
         super().__init__(env)
 
     def reset(
-        self, rng: chex.PRNGKey, config: EnvConfig
-    ) -> Tuple[chex.Array, EpisodeStatisticsState]:
+        self, rng: chex.PRNGKey
+    ) -> Tuple[chex.Array, EpisodeStatisticsState[InnerStateT]]:
         """
         Reset the environment and episode accumulators.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            Initial observation.
+            Initial observation
         state : EpisodeStatisticsState
-            Initial state with zeroed accumulators.
+            Initial state with zeroed accumulators
         """
-        obs, env_state = self._env.reset(rng, config)
+        obs, env_state = self._env.reset(rng)
         state = EpisodeStatisticsState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
             env_state=env_state,
             episode_return=jnp.float32(0.0),
             episode_length=jnp.int32(0),
@@ -74,44 +81,40 @@ class RecordEpisodeStatistics(Wrapper):
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: EpisodeStatisticsState,
+        state: EpisodeStatisticsState[InnerStateT],
         action: chex.Array,
-        config: EnvConfig,
     ) -> Tuple[
-        chex.Array, EpisodeStatisticsState, chex.Array, chex.Array, Dict[str, Any]
+        chex.Array,
+        EpisodeStatisticsState[InnerStateT],
+        chex.Array,
+        chex.Array,
+        Dict[str, Any],
     ]:
         """
         Step the environment and update episode accumulators.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
         state : EpisodeStatisticsState
-            Current state.
+            Current state
         action : chex.Array
-            Action to take.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Next observation.
+            Next observation
         new_state : EpisodeStatisticsState
-            Updated state.
+            Updated state
         reward  : chex.Array
-            Step reward.
+            Step reward
         done  : chex.Array
-            Episode terminal flag.
+            Episode terminal flag
         info : Dict[str, Any]
             Environment metadata extended with `"episode"`:
-            `{"r": float32, "l": int32}` — non-zero only when `done=True`.
+            `{"r": float32, "l": int32}` — non-zero only when `done=True`
         """
-        obs, env_state, reward, done, info = self._env.step(
-            rng, state.env_state, action, config
-        )
+        obs, env_state, reward, done, info = self._env.step(state.env_state, action)
 
         episode_return = state.episode_return + reward.astype(jnp.float32)
         episode_length = state.episode_length + jnp.int32(1)
@@ -122,6 +125,9 @@ class RecordEpisodeStatistics(Wrapper):
         }
 
         new_state = EpisodeStatisticsState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
             env_state=env_state,
             episode_return=jnp.where(done, jnp.float32(0.0), episode_return),
             episode_length=jnp.where(done, jnp.int32(0), episode_length),

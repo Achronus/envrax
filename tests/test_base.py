@@ -1,18 +1,19 @@
 import jax
 import jax.numpy as jnp
-import pytest
 
 from envrax.base import EnvConfig, EnvState
+
+_RNG = jax.random.key(0)
 
 
 class TestEnvState:
     def test_fields(self):
-        state = EnvState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = EnvState(rng=_RNG, step=jnp.int32(0), done=jnp.bool_(False))
         assert int(state.step) == 0
         assert not bool(state.done)
 
     def test_replace(self):
-        state = EnvState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = EnvState(rng=_RNG, step=jnp.int32(0), done=jnp.bool_(False))
         new_state = state.replace(step=jnp.int32(5))
         assert int(new_state.step) == 5
         assert not bool(new_state.done)

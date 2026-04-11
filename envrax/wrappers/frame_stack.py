@@ -1,33 +1,41 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, EnvState, JaxEnv
 from envrax.spaces import Box
-from envrax.wrappers.base import Wrapper
+from envrax.wrappers.base import InnerStateT, Wrapper
+from envrax.wrappers.utils import require_box
 
 
 @chex.dataclass
-class FrameStackState:
+class FrameStackState(EnvState, Generic[InnerStateT]):
     """
     State for `FrameStackObservation`.
 
+    Generic over the inner env's state type so `env_state` is precisely
+    typed when the wrapper is parameterised. The base `rng`/`step`/`done`
+    fields are forwarded copies from the inner state so that the framework
+    (e.g. `VecEnv` auto-reset) can read them from the outer state.
+
     Parameters
     ----------
-    env_state : Any
+    env_state : InnerStateT
         Underlying environment state (may itself be a wrapped state).
     obs_stack : jax.Array
         uint8[H, W, n_stack] — Ring buffer of the last `n_stack` processed
         observations, oldest frame at channel index 0.
     """
 
-    env_state: Any
+    env_state: InnerStateT
     obs_stack: jax.Array
 
 
-class FrameStackObservation(Wrapper):
+class FrameStackObservation(
+    Wrapper[Box, ActSpaceT, FrameStackState[InnerStateT], InnerStateT]
+):
     """
     Maintain a sliding window of the last `n_stack` observations.
 
@@ -37,79 +45,93 @@ class FrameStackObservation(Wrapper):
     Parameters
     ----------
     env : JaxEnv
-        Inner environment returning 2-D observations.
+        Inner environment returning 2-D `uint8` observations.
     n_stack : int (optional)
         Number of frames to stack. Default is `4`.
     """
 
-    def __init__(self, env: JaxEnv, *, n_stack: int = 4) -> None:
+    def __init__(
+        self,
+        env: JaxEnv[Box, ActSpaceT, InnerStateT],
+        *,
+        n_stack: int = 4,
+    ) -> None:
         super().__init__(env)
+        require_box(env, type(self).__name__, rank=2, dtype=jnp.uint8)
         self._n_stack = n_stack
 
     def reset(
-        self, rng: chex.PRNGKey, config: EnvConfig
-    ) -> Tuple[chex.Array, FrameStackState]:
+        self, rng: chex.PRNGKey
+    ) -> Tuple[chex.Array, FrameStackState[InnerStateT]]:
         """
         Reset the inner environment and initialise the frame stack.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            uint8[H, W, n_stack] — Initial stacked observation.
+            Initial stacked observation
         state : FrameStackState
-            Wrapper state containing the inner state and the stack.
+            Wrapper state containing the inner state and the stack
         """
-        obs, env_state = self._env.reset(rng, config)
+        obs, env_state = self._env.reset(rng)
         stack = jnp.stack([obs] * self._n_stack, axis=-1)
-        wrapped = FrameStackState(env_state=env_state, obs_stack=stack)
+        wrapped = FrameStackState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
+            env_state=env_state,
+            obs_stack=stack,
+        )
         return stack, wrapped
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: FrameStackState,
+        state: FrameStackState[InnerStateT],
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, FrameStackState, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[
+        chex.Array,
+        FrameStackState[InnerStateT],
+        chex.Array,
+        chex.Array,
+        Dict[str, Any],
+    ]:
         """
         Step the inner environment and roll the frame stack.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
         state : FrameStackState
-            Current wrapper state.
+            Current wrapper state
         action : chex.Array
-            int32 — Action index.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            uint8[H, W, n_stack] — Updated stacked observation.
+            Updated stacked observation
         new_state : FrameStackState
-            Updated wrapper state.
+            Updated wrapper state
         reward  : chex.Array
-            float32 — Reward from the inner step.
+            Reward from the inner step
         done  : chex.Array
-            bool — Terminal flag from the inner step.
+            Terminal flag from the inner step
         info : Dict[str, Any]
-            Info dict from the inner step.
+            Info dict from the inner step
         """
-        obs, env_state, reward, done, info = self._env.step(
-            rng, state.env_state, action, config
+        obs, env_state, reward, done, info = self._env.step(state.env_state, action)
+        new_stack = jnp.concatenate([state.obs_stack[..., 1:], obs[..., None]], axis=-1)
+        new_state = FrameStackState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
+            env_state=env_state,
+            obs_stack=new_stack,
         )
-        new_stack = jnp.concatenate([state.obs_stack[..., 1:], obs[..., None]], axis=-1)  # type: ignore
-        new_state = FrameStackState(env_state=env_state, obs_stack=new_stack)
         return new_stack, new_state, reward, done, info
 
     @property

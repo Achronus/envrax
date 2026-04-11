@@ -3,12 +3,13 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
+from envrax.wrappers.utils import require_box
 
 
-class NormalizeObservation(Wrapper):
+class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT]):
     """
     Normalises pixel observations from `uint8 [0, 255]` to `float32 [0, 1]`.
 
@@ -17,68 +18,62 @@ class NormalizeObservation(Wrapper):
     Parameters
     ----------
     env : JaxEnv
-        Environment to wrap.
+        Environment to wrap. Must have a `Box` observation space with
+        dtype `uint8`.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT]) -> None:
         super().__init__(env)
+        require_box(env, type(self).__name__, dtype=jnp.uint8)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Reset and return a normalised initial observation.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            Normalised observation, float32 in [0, 1].
-        state : Any
-            Inner environment state.
+            Normalised observation in `[0, 1]`
+        state : StateT
+            Inner environment state
         """
-        obs, state = self._env.reset(rng, config)
+        obs, state = self._env.reset(rng)
         return obs.astype(jnp.float32) / jnp.float32(255.0), state
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step and return a normalised observation.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : Any
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            Action to take.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Normalised observation, float32 in [0, 1].
-        new_state : Any
-            Updated environment state.
+            Normalised observation in `[0, 1]`
+        new_state : StateT
+            Updated environment state
         reward  : chex.Array
-            Step reward.
+            Step reward
         done  : chex.Array
-            Terminal flag.
+            Terminal flag
         info : Dict[str, Any]
-            Environment metadata.
+            Environment metadata
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
+        obs, new_state, reward, done, info = self._env.step(state, action)
         return (
             obs.astype(jnp.float32) / jnp.float32(255.0),
             new_state,

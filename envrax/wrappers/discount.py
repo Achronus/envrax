@@ -3,11 +3,11 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class EpisodeDiscount(Wrapper):
+class EpisodeDiscount(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
     """
     Convert the boolean `done` signal to a float32 episode discount.
 
@@ -20,46 +20,40 @@ class EpisodeDiscount(Wrapper):
         Inner environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT]) -> None:
         super().__init__(env)
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
-        return self._env.reset(rng, config)
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+        return self._env.reset(rng)
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Advance the environment and return a float32 discount instead of done.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : Any
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            int32 — Action index.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Observation from the inner step.
-        new_state : Any
-            Updated environment state.
+            Observation from the inner step
+        new_state : StateT
+            Updated environment state
         reward  : chex.Array
-            float32 — Reward from the inner step (unchanged).
+            Reward from the inner step (unchanged)
         discount  : chex.Array
-            float32 — `1.0` if the episode continues, `0.0` if it terminated.
+            `1.0` if the episode continues, `0.0` if it terminated
         info : Dict[str, Any]
-            Info dict from the inner step.
+            Info dict from the inner step
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
+        obs, new_state, reward, done, info = self._env.step(state, action)
         discount = jnp.where(done, jnp.float32(0.0), jnp.float32(1.0))
         return obs, new_state, reward, discount, info

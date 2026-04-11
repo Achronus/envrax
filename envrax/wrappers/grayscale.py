@@ -1,14 +1,15 @@
 from typing import Any, Dict, Tuple
 
 import chex
+import jax.numpy as jnp
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
-from envrax.wrappers.utils import to_gray
+from envrax.wrappers.utils import require_box, to_gray
 
 
-class GrayscaleObservation(Wrapper):
+class GrayscaleObservation(Wrapper[Box, ActSpaceT, StateT]):
     """
     Convert RGB observations to grayscale using the NTSC luminance formula.
 
@@ -18,68 +19,68 @@ class GrayscaleObservation(Wrapper):
     Parameters
     ----------
     env : JaxEnv
-        Inner environment to wrap.
+        Inner environment to wrap. Must have a `Box` observation space
+        of shape `(H, W, 3)` and dtype `uint8`.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT]) -> None:
         super().__init__(env)
+        require_box(
+            env,
+            type(self).__name__,
+            rank=3,
+            last_dim=3,
+            dtype=jnp.uint8,
+        )
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Reset the inner environment and convert the observation to grayscale.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            uint8[H, W] — Grayscale observation.
-        state : Any
-            Inner environment state.
+            Grayscale observation
+        state : StateT
+            Inner environment state
         """
-        obs, state = self._env.reset(rng, config)
+        obs, state = self._env.reset(rng)
         return to_gray(obs), state
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step the inner environment and convert the observation to grayscale.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : Any
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            int32 — Action index.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            uint8[H, W] — Grayscale observation.
-        new_state : Any
-            Updated environment state.
+            Grayscale observation
+        new_state : StateT
+            Updated environment state
         reward  : chex.Array
-            float32 — Reward from the inner step.
+            Reward from the inner step
         done  : chex.Array
-            bool — Terminal flag from the inner step.
-        info : dict
-            Info dict from the inner step.
+            Terminal flag from the inner step
+        info : Dict[str, Any]
+            Info dict from the inner step
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
+        obs, new_state, reward, done, info = self._env.step(state, action)
         return to_gray(obs), new_state, reward, done, info
 
     @property

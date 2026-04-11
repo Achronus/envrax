@@ -4,11 +4,11 @@ from typing import Any, Dict, List, Tuple
 import chex
 import numpy as np
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class RecordVideo(Wrapper):
+class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
     """Save episode frames to MP4 when each episode ends.
 
     **Not JIT/vmap-compatible.** Intended for evaluation runs and
@@ -31,7 +31,12 @@ class RecordVideo(Wrapper):
         Frames per second for the saved video. Default is ``30``.
     """
 
-    def __init__(self, env: JaxEnv, output_dir: str | Path, fps: int = 30) -> None:
+    def __init__(
+        self,
+        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT],
+        output_dir: str | Path,
+        fps: int = 30,
+    ) -> None:
         super().__init__(env)
         self.output_dir = Path(output_dir)
         self.fps = fps
@@ -39,25 +44,23 @@ class RecordVideo(Wrapper):
         self._frames: List[np.ndarray] = []
         self._episode_id: int = 0
 
-    def reset(self, rng: chex.PRNGKey, config: EnvConfig) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Reset the environment and begin a new recording.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        config : EnvConfig
-            Environment configuration.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            First observation.
-        state : Any
-            Initial environment state.
+            First observation
+        state : StateT
+            Initial environment state
         """
-        obs, state = self._env.reset(rng, config)
+        obs, state = self._env.reset(rng)
         inner = self.unwrapped
         if hasattr(inner, "render"):
             self._frames = [np.asarray(inner.render(state))]
@@ -67,11 +70,9 @@ class RecordVideo(Wrapper):
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        config: EnvConfig,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Advance the environment by one step and record the frame.
 
@@ -79,29 +80,25 @@ class RecordVideo(Wrapper):
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : Any
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            int32 — Action index.
-        config : EnvConfig
-            Environment configuration.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Observation after the step.
-        new_state : Any
-            Updated environment state.
+            Observation after the step
+        new_state : StateT
+            Updated environment state
         reward  : chex.Array
-            float32 — Reward for this step.
+            Reward for this step
         done  : chex.Array
-            bool — True when the episode has ended.
+            True when the episode has ended
         info : Dict[str, Any]
-            Pass-through info dict from the inner environment.
+            Pass-through info dict from the inner environment
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, config)
+        obs, new_state, reward, done, info = self._env.step(state, action)
         inner = self.unwrapped
         if hasattr(inner, "render"):
             self._frames.append(np.asarray(inner.render(new_state)))

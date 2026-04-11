@@ -83,7 +83,10 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
     def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Set the environment to a starting state.
-        Returns `(observation, initial_state)`.
+
+        Implementations should split `rng` so one half is consumed for
+        initialisation and the other half is stored on the returned state's
+        `rng` field for `step` to use.
 
         Parameters
         ----------
@@ -106,7 +109,11 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
         action: chex.Array,
     ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
-        Takes an action through the environment.
+        Take an action through the environment.
+
+        Implementations should split `state.rng` for any per-step randomness
+        and store the remaining key on `new_state.rng` so randomness threads
+        through the episode.
 
         Parameters
         ----------
