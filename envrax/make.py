@@ -5,7 +5,7 @@ import jax
 import jax.numpy as jnp
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.base import EnvConfig, JaxEnv
+from envrax.env import EnvConfig, JaxEnv
 from envrax.registry import _REGISTRY
 from envrax.vec_env import VecEnv
 from envrax.wrappers.base import WrapperType

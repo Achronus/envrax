@@ -7,7 +7,7 @@ import jax.numpy as jnp
 from envrax.spaces import Box
 
 if TYPE_CHECKING:
-    from envrax.base import JaxEnv
+    from envrax.env import JaxEnv
 
 _LUMA = jnp.array([0.299, 0.587, 0.114], dtype=jnp.float32)
 

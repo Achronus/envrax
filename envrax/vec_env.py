@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Space, batch_space
 
 

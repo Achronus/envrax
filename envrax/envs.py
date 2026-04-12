@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from importlib.util import find_spec
 from typing import Dict, Iterator, List, Self, Type, Union
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.env import EnvConfig, JaxEnv
 from envrax.error import MissingPackageError
 
 

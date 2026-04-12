@@ -8,7 +8,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Box, Discrete
 from envrax.wrappers import JitWrapper, Wrapper
 
@@ -40,10 +40,10 @@ class _VectorEnv(JaxEnv[Box, Discrete, _VectorState]):
 
     def step(self, state, action):
         obs = jnp.zeros((4,), dtype=jnp.float32)
-        new_state = state.replace(step=state.step + 1)
+        new_state = state.__replace__(step=state.step + 1)
         reward = jnp.float32(1.0)
         done = new_state.step >= self.config.max_steps
-        return obs, new_state.replace(done=done), reward, done, {}
+        return obs, new_state.__replace__(done=done), reward, done, {}
 
 
 _RNG = jax.random.key(0)

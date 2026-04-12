@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 import chex
 import numpy as np
 
-from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 

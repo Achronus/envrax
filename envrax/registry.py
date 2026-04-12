@@ -1,6 +1,6 @@
 from typing import Dict, List, Type
 
-from envrax.base import EnvConfig, JaxEnv
+from envrax.env import EnvConfig, JaxEnv
 from envrax.envs import EnvSpec, EnvSuite
 
 _REGISTRY: Dict[str, EnvSpec] = {}

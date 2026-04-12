@@ -2,7 +2,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Box, Discrete, MultiDiscrete
 from envrax.vec_env import VecEnv
 from envrax.wrappers import (
@@ -44,7 +44,7 @@ class _PixelEnv(JaxEnv[Box, Discrete, _PixelState]):
 
     def step(self, state, action):
         obs = jnp.full((4, 4, 3), 64, dtype=jnp.uint8)
-        new_state = state.replace(
+        new_state = state.__replace__(
             step=state.step + 1,
             done=jnp.bool_(state.step + 1 >= self.config.max_steps),
         )

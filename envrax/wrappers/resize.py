@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import ActSpaceT, JaxEnv, StateT
+from envrax.env import ActSpaceT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 from envrax.wrappers.utils import require_box, resize

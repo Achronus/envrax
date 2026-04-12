@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 

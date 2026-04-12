@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from envrax.base import EnvConfig, EnvState
+from envrax.env import EnvConfig, EnvState
 
 _RNG = jax.random.key(0)
 
@@ -14,7 +14,7 @@ class TestEnvState:
 
     def test_replace(self):
         state = EnvState(rng=_RNG, step=jnp.int32(0), done=jnp.bool_(False))
-        new_state = state.replace(step=jnp.int32(5))
+        new_state = state.__replace__(step=jnp.int32(5))
         assert int(new_state.step) == 5
         assert not bool(new_state.done)
 
@@ -30,5 +30,5 @@ class TestEnvConfig:
 
     def test_replace(self):
         config = EnvConfig()
-        new_config = config.replace(max_steps=2000)
+        new_config = config.__replace__(max_steps=2000)
         assert new_config.max_steps == 2000

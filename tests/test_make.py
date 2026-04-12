@@ -9,7 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.make import make, make_multi, make_multi_vec, make_vec
 from envrax.registry import _REGISTRY, register
 from envrax.spaces import Box, Discrete
@@ -44,7 +44,7 @@ class _PixEnv(JaxEnv[Box, Discrete, _PixState]):
 
     def step(self, state, action):
         obs = jnp.full((8, 8, 3), 64, dtype=jnp.uint8)
-        new_state = state.replace(
+        new_state = state.__replace__(
             step=state.step + 1,
             done=jnp.bool_(state.step + 1 >= self.config.max_steps),
         )
@@ -113,9 +113,7 @@ class TestMake:
         assert isinstance(env, GrayscaleObservation)
 
     def test_wrapper_changes_obs_shape(self):
-        env, _ = make(
-            _ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False
-        )
+        env, _ = make(_ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False)
         obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8))
 
@@ -148,9 +146,7 @@ class TestMakeVec:
     def test_step_shape(self):
         vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
         _, states = vec_env.reset(jax.random.key(0))
-        obs, _, rewards, dones, _ = vec_env.step(
-            states, jnp.zeros(4, dtype=jnp.int32)
-        )
+        obs, _, rewards, dones, _ = vec_env.step(states, jnp.zeros(4, dtype=jnp.int32))
         chex.assert_shape(obs, (4, 8, 8, 3))
         chex.assert_shape(rewards, (4,))
         chex.assert_shape(dones, (4,))

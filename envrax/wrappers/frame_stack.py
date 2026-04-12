@@ -4,7 +4,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.base import ActSpaceT, EnvState, JaxEnv
+from envrax.env import ActSpaceT, EnvState, JaxEnv
 from envrax.spaces import Box
 from envrax.wrappers.base import InnerStateT, Wrapper
 from envrax.wrappers.utils import require_box

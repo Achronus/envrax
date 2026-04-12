@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, Self, Tuple, TypeVar, overload
 
 import chex
 
-from envrax.base import ActSpaceT, EnvState, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, EnvState, JaxEnv, ObsSpaceT, StateT
 
 InnerStateT = TypeVar("InnerStateT", bound=EnvState, default=StateT)
 

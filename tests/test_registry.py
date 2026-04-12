@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvConfig, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.envs import EnvSet, EnvSpec, EnvSuite
 from envrax.make import make
 from envrax.registry import (
@@ -44,7 +44,7 @@ class _DummyEnv(JaxEnv[Box, Discrete, _DummyState]):
 
     def step(self, state, action):
         obs = jnp.zeros((4,), dtype=jnp.float32)
-        new_state = state.replace(step=state.step + 1)
+        new_state = state.__replace__(step=state.step + 1)
         reward = jnp.float32(0.0)
         done = new_state.step >= self.config.max_steps
         return obs, new_state, reward, done, {}
@@ -191,11 +191,21 @@ class TestEnvSuite:
 
 class TestRegisterSuite:
     def setup_method(self):
-        for name in ("dummy/alpha-v0", "dummy/beta-v0", "dummy/alpha-v1", "dummy/beta-v1"):
+        for name in (
+            "dummy/alpha-v0",
+            "dummy/beta-v0",
+            "dummy/alpha-v1",
+            "dummy/beta-v1",
+        ):
             _REGISTRY.pop(name, None)
 
     def teardown_method(self):
-        for name in ("dummy/alpha-v0", "dummy/beta-v0", "dummy/alpha-v1", "dummy/beta-v1"):
+        for name in (
+            "dummy/alpha-v0",
+            "dummy/beta-v0",
+            "dummy/alpha-v1",
+            "dummy/beta-v1",
+        ):
             _REGISTRY.pop(name, None)
 
     def test_registers_all_specs(self):

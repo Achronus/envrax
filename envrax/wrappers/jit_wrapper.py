@@ -5,7 +5,7 @@ import chex
 import jax
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.base import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
