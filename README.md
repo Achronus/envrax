@@ -1,8 +1,18 @@
 # Envrax
 
+![Python Version](https://img.shields.io/pypi/pyversions/envrax)
+![License](https://img.shields.io/github/license/Achronus/envrax)
+
+
+
 Envrax is a lightweight open-source JAX-native Reinforcement Learning (RL) environment API standard for single-agents, equivalent to the [Gymnasium](https://github.com/Farama-Foundation/Gymnasium) package. It includes: base classes, spaces, wrappers, and a shared registry for building and utilizing RL environments with ease.
 
 All environment logic follows a *stateless functional design* that builds on top of the [JAX](https://github.com/jax-ml/jax) and [Chex](https://github.com/google-deepmind/chex) packages to benefit from JAX accelerator efficiency.
+
+Found on:
+
+- [PyPi](https://pypi.org/project/envrax)
+- [GitHub](https://github.com/Achronus/envrax)
 
 ## Why Envrax?
 
@@ -36,8 +46,6 @@ uv sync
 ```
 
 ## API Standard
-
-[Documentation]()
 
 Envrax enforces a small, strict interface so that every environment, regardless of the suite created, behaves identically under `jax.jit`, `jax.vmap`, and `jax.lax.scan`.
 
@@ -437,7 +445,3 @@ vec_env.compile()  # warm up the vmapped reset + step
 | `register_suite(suite, *, version=None)` | Register every spec in an `EnvSuite` under its canonical IDs. |
 | `get_spec(name)` | Return the full registered `EnvSpec` for an environment. |
 | `registered_names()` | Sorted list of all registered environment names. |
-
-## Licence
-
-MIT — see [LICENSE](LICENSE).
