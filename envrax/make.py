@@ -1,11 +1,10 @@
-import pathlib
+from pathlib import Path
 from typing import List, Tuple
 
-import jax
-import jax.numpy as jnp
-
-from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
+from envrax._compile import DEFAULT_CACHE_DIR
 from envrax.env import EnvConfig, JaxEnv
+from envrax.multi_env import MultiEnv
+from envrax.multi_vec_env import MultiVecEnv
 from envrax.registry import _REGISTRY
 from envrax.vec_env import VecEnv
 from envrax.wrappers.base import WrapperType
@@ -18,7 +17,8 @@ def make(
     config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
-    cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
+    pre_warm: bool = True,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
 ) -> Tuple[JaxEnv, EnvConfig]:
     """
     Create a single `JaxEnv`, optionally with wrappers applied.
@@ -33,8 +33,11 @@ def make(
         Wrapper classes or pre-configured factories applied innermost-first
         around the base env.
     jit_compile : bool (optional)
-        Wrap the env in `JitWrapper` and run one warm-up `reset` + `step`
-        to eagerly trigger XLA compilation. Default is `True`.
+        Wrap the env in `JitWrapper`. Default is `True`.
+    pre_warm : bool (optional)
+        When `jit_compile=True`, run a dummy `reset` + `step` immediately
+        to trigger XLA compilation. Set to `False` to defer compilation
+        to the first real call or an explicit `compile()`. Default is `True`.
     cache_dir : Path | str | None (optional)
         Directory for the persistent XLA compilation cache.
         Defaults to `~/.cache/envrax/xla_cache`. Pass `None` to disable.
@@ -49,7 +52,7 @@ def make(
 
     Raises
     ------
-    ValueError
+    unknown_env : ValueError
         If `name` is not registered.
     """
     if name not in _REGISTRY:
@@ -65,10 +68,7 @@ def make(
             env = w(env)
 
     if jit_compile:
-        env = JitWrapper(env, cache_dir=cache_dir)
-        _key = jax.random.key(0)
-        _, _state = env.reset(_key)
-        env.step(_state, env.action_space.sample(_key))
+        env = JitWrapper(env, cache_dir=cache_dir, pre_warm=pre_warm)
 
     return env, resolved_config
 
@@ -80,7 +80,8 @@ def make_vec(
     config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
-    cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
+    pre_warm: bool = True,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
 ) -> Tuple[VecEnv, EnvConfig]:
     """
     Create a `VecEnv` with `n_envs` parallel environments.
@@ -96,7 +97,10 @@ def make_vec(
     wrappers : List[WrapperType] (optional)
         Wrapper classes applied innermost-first. Applied before vectorisation.
     jit_compile : bool (optional)
-        Run one warm-up `reset` + `step` to eagerly trigger XLA compilation.
+        Enable the XLA compilation cache. Default is `True`.
+    pre_warm : bool (optional)
+        When `jit_compile=True`, run a dummy `reset` + `step` immediately.
+        Set to `False` to defer to an explicit `vec_env.compile()` call.
         Default is `True`.
     cache_dir : Path | str | None (optional)
         Directory for the persistent XLA compilation cache.
@@ -119,10 +123,8 @@ def make_vec(
 
     vec_env = VecEnv(inner_env, n_envs)
 
-    if jit_compile:
-        setup_cache(cache_dir)
-        _, _states = vec_env.reset(jax.random.key(0))
-        vec_env.step(_states, jnp.zeros(n_envs, dtype=jnp.int32))
+    if jit_compile and pre_warm:
+        vec_env.compile(cache_dir=cache_dir)
 
     return vec_env, resolved_config
 
@@ -133,19 +135,51 @@ def make_multi(
     config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
-    cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> List[Tuple[JaxEnv, EnvConfig]]:
-    """Create one `(JaxEnv, EnvConfig)` tuple per entry in `names`."""
-    return [
-        make(
+    pre_warm: bool = False,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+) -> MultiEnv:
+    """
+    Create a `MultiEnv` managing M heterogeneous environments.
+
+    By default, `pre_warm=False` so environments are JIT-wrapped but not
+    compiled immediately. Call `multi_env.compile()` to trigger compilation
+    as a separate setup phase.
+
+    Parameters
+    ----------
+    names : List[str]
+        Registered environment names
+    config : EnvConfig (optional)
+        Environment configuration applied to all envs.
+        Defaults to each env's registered default.
+    wrappers : List[WrapperType] (optional)
+        Wrapper pipeline applied to each env
+    jit_compile : bool (optional)
+        Wrap each env in `JitWrapper`. Default is `True`.
+    pre_warm : bool (optional)
+        When `jit_compile=True`, compile each env immediately on creation.
+        Default is `False` — call `multi_env.compile()` later instead.
+    cache_dir : Path | str | None (optional)
+        Directory for the persistent XLA compilation cache
+
+    Returns
+    -------
+    multi_env : MultiEnv
+        Manager holding all M environments
+    """
+    envs = []
+    for name in names:
+        env, _ = make(
             name,
             config=config,
             wrappers=wrappers,
             jit_compile=jit_compile,
+            pre_warm=pre_warm,
             cache_dir=cache_dir,
         )
-        for name in names
-    ]
+        envs.append(env)
+
+    return MultiEnv(envs)
 
 
 def make_multi_vec(
@@ -155,17 +189,54 @@ def make_multi_vec(
     config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
-    cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
-) -> List[Tuple[VecEnv, EnvConfig]]:
-    """Create one `(VecEnv, EnvConfig)` tuple per entry in `names`."""
-    return [
-        make_vec(
+    pre_warm: bool = False,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+) -> MultiVecEnv:
+    """
+    Create a `MultiVecEnv` managing M heterogeneous vectorised environments.
+
+    By default, `pre_warm=False` so VecEnv instances are created but not
+    compiled immediately. Call `multi_vec_env.compile()` to trigger
+    compilation as a separate setup phase.
+
+    Parameters
+    ----------
+    names : List[str]
+        Registered environment names
+    n_envs : int
+        Number of parallel copies per env
+    config : EnvConfig (optional)
+        Environment configuration applied to all envs.
+        Defaults to each env's registered default.
+    wrappers : List[WrapperType] (optional)
+        Wrapper pipeline applied to each inner env before vectorisation
+    jit_compile : bool (optional)
+        Enable the XLA compilation cache. Default is `True`.
+    pre_warm : bool (optional)
+        When `jit_compile=True`, compile each VecEnv immediately.
+        Default is `False` — call `multi_vec_env.compile()` later instead.
+    cache_dir : Path | str | None (optional)
+        Directory for the persistent XLA compilation cache
+
+    Returns
+    -------
+    multi_vec_env : MultiVecEnv
+        Manager holding all M vectorised environments
+    """
+    vec_envs = []
+    for name in names:
+        inner, _ = make(
             name,
-            n_envs,
             config=config,
             wrappers=wrappers,
-            jit_compile=jit_compile,
-            cache_dir=cache_dir,
+            jit_compile=False,
+            cache_dir=None,
         )
-        for name in names
-    ]
+        vec = VecEnv(inner, n_envs)
+
+        if jit_compile and pre_warm:
+            vec.compile(cache_dir=cache_dir)
+
+        vec_envs.append(vec)
+
+    return MultiVecEnv(vec_envs)

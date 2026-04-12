@@ -11,6 +11,8 @@ import pytest
 
 from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.make import make, make_multi, make_multi_vec, make_vec
+from envrax.multi_env import MultiEnv
+from envrax.multi_vec_env import MultiVecEnv
 from envrax.registry import _REGISTRY, register
 from envrax.spaces import Box, Discrete
 from envrax.vec_env import VecEnv
@@ -163,16 +165,20 @@ class TestMakeVec:
 
 
 class TestMakeMulti:
-    def test_returns_list_of_tuples(self):
-        results = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
-        assert len(results) == 2
-        for env, config in results:
-            assert isinstance(env, _PixEnv)
-            assert isinstance(config, EnvConfig)
+    def test_returns_multi_env(self):
+        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
+        assert isinstance(multi, MultiEnv)
+        assert multi.num_envs == 2
 
-    def test_empty_list_returns_empty(self):
-        results = make_multi([], jit_compile=False)
-        assert results == []
+    def test_envs_are_correct_type(self):
+        multi = make_multi([_ENV_NAME], jit_compile=False)
+        assert isinstance(multi.envs[0], _PixEnv)
+
+    def test_reset_works(self):
+        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
+        obs_list, _ = multi.reset(_RNG)
+        assert len(obs_list) == 2
+        assert obs_list[0].shape == (8, 8, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -181,9 +187,13 @@ class TestMakeMulti:
 
 
 class TestMakeMultiVec:
-    def test_returns_list_of_vec_envs(self):
-        results = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
-        assert len(results) == 2
-        for vec_env, _ in results:
-            assert isinstance(vec_env, VecEnv)
-            assert vec_env.num_envs == 2
+    def test_returns_multi_vec_env(self):
+        multi = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
+        assert isinstance(multi, MultiVecEnv)
+        assert multi.num_envs == 2
+
+    def test_vec_envs_are_correct(self):
+        multi = make_multi_vec([_ENV_NAME], n_envs=4, jit_compile=False)
+        assert isinstance(multi.vec_envs[0], VecEnv)
+        assert multi.vec_envs[0].num_envs == 4
+        assert multi.total_envs == 4

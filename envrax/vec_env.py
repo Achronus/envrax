@@ -1,8 +1,11 @@
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import chex
 import jax
+import jax.numpy as jnp
 
+from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
 from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.spaces import Space, batch_space
 
@@ -120,6 +123,23 @@ class VecEnv:
         final_state = jax.lax.cond(done, lambda: reset_state, lambda: new_state)
 
         return final_obs, final_state, reward, done, info
+
+    def compile(self, cache_dir: Path | str | None = DEFAULT_CACHE_DIR) -> None:
+        """
+        Trigger XLA compilation by running a dummy `reset` + `step`.
+
+        Useful when construction and compilation should be separate phases.
+        Safe to call multiple times.
+
+        Parameters
+        ----------
+        cache_dir : Path | str | None (optional)
+            XLA cache directory. Defaults to `~/.cache/envrax/xla_cache`.
+        """
+        setup_cache(cache_dir)
+        _key = jax.random.key(0)
+        _, _state = self.reset(_key)
+        self.step(_state, jnp.zeros(self.num_envs, dtype=jnp.int32))
 
     @property
     def single_observation_space(self) -> Space:

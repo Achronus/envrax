@@ -101,3 +101,15 @@ class TestJitWrapper:
         _, state, _, _, _ = env.step(state, jnp.int32(0))
         _, _, _, done, _ = env.step(state, jnp.int32(0))
         assert bool(done)
+
+    def test_pre_warm_false_defers_compilation(self):
+        env = JitWrapper(_VectorEnv(config=_CONFIG), cache_dir=None, pre_warm=False)
+        # Should still work — first call triggers lazy compilation
+        obs, _ = env.reset(_RNG)
+        chex.assert_shape(obs, (4,))
+
+    def test_explicit_compile(self):
+        env = JitWrapper(_VectorEnv(config=_CONFIG), cache_dir=None, pre_warm=False)
+        env.compile()
+        obs, _ = env.reset(_RNG)
+        chex.assert_shape(obs, (4,))

@@ -28,7 +28,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
         Directory where MP4 files are saved. Created automatically if
         it does not exist.
     fps : int (optional)
-        Frames per second for the saved video. Default is ``30``.
+        Frames per second for the saved video. Default is `30`.
     """
 
     def __init__(
@@ -76,7 +76,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
         """
         Advance the environment by one step and record the frame.
 
-        Flushes the accumulated frames to an MP4 file when ``done`` is True.
+        Flushes the accumulated frames to an MP4 file when `done` is True.
 
         Parameters
         ----------
