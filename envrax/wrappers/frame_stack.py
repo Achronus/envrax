@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 from envrax.env import ActSpaceT, EnvState, JaxEnv
 from envrax.spaces import Box
-from envrax.wrappers.base import InnerStateT, Wrapper
+from envrax.wrappers.base import InnerStateT, StatefulWrapper
 from envrax.wrappers.utils import require_box
 
 
@@ -34,7 +34,12 @@ class FrameStackState(EnvState, Generic[InnerStateT]):
 
 
 class FrameStackObservation(
-    Wrapper[Box, ActSpaceT, FrameStackState[InnerStateT], InnerStateT]
+    StatefulWrapper[
+        Box,
+        ActSpaceT,
+        FrameStackState[InnerStateT],
+        InnerStateT,
+    ]
 ):
     """
     Maintain a sliding window of the last `n_stack` observations.
@@ -124,7 +129,10 @@ class FrameStackObservation(
             Info dict from the inner step
         """
         obs, env_state, reward, done, info = self._env.step(state.env_state, action)
-        new_stack = jnp.concatenate([state.obs_stack[..., 1:], obs[..., None]], axis=-1)
+        new_stack = jnp.concatenate(
+            [state.obs_stack[..., 1:], jnp.expand_dims(obs, -1)],
+            axis=-1,
+        )
         new_state = FrameStackState(
             rng=env_state.rng,
             step=env_state.step,

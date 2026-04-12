@@ -4,7 +4,7 @@ import chex
 import jax.numpy as jnp
 
 from envrax.env import ActSpaceT, EnvState, JaxEnv, ObsSpaceT
-from envrax.wrappers.base import InnerStateT, Wrapper
+from envrax.wrappers.base import InnerStateT, StatefulWrapper
 
 
 @chex.dataclass
@@ -32,7 +32,12 @@ class EpisodeStatisticsState(EnvState, Generic[InnerStateT]):
 
 
 class RecordEpisodeStatistics(
-    Wrapper[ObsSpaceT, ActSpaceT, EpisodeStatisticsState[InnerStateT], InnerStateT]
+    StatefulWrapper[
+        ObsSpaceT,
+        ActSpaceT,
+        EpisodeStatisticsState[InnerStateT],
+        InnerStateT,
+    ]
 ):
     """
     Records episode return and length.
@@ -129,7 +134,7 @@ class RecordEpisodeStatistics(
             step=env_state.step,
             done=env_state.done,
             env_state=env_state,
-            episode_return=jnp.where(done, jnp.float32(0.0), episode_return),
+            episode_return=jnp.where(done, jnp.float32(0.0), episode_return),  # pyright: ignore[reportArgumentType]
             episode_length=jnp.where(done, jnp.int32(0), episode_length),
         )
         return obs, new_state, reward, done, info
