@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Tuple, TypeVar
 
 import chex
+import numpy as np
 
 from envrax.spaces import Space
 
@@ -136,6 +137,25 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
             Auxiliary diagnostic information
         """
         ...
+
+    def render(self, state: StateT) -> np.ndarray:
+        """
+        Render the environment state as an RGB frame.
+
+        Parameters
+        ----------
+        state : StateT
+            Current environment state to render
+
+        Returns
+        -------
+        frame : np.ndarray
+            uint8 RGB array of shape `(H, W, 3)`
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement render(). "
+            "Override render(state) to return a uint8 (H, W, 3) RGB frame."
+        )
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}"

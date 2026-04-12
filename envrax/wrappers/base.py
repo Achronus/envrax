@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, Generic, Self, Tuple, TypeVar, overload
 
 import chex
+import numpy as np
 
 from envrax.env import ActSpaceT, EnvState, JaxEnv, ObsSpaceT, StateT
 
@@ -110,6 +111,10 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT]):
     def unwrapped(self) -> JaxEnv:
         """Return the innermost `JaxEnv` by delegating through the wrapper chain."""
         return self._env.unwrapped if isinstance(self._env, Wrapper) else self._env
+
+    def render(self, state: StateT, **kwargs: Any) -> np.ndarray:
+        """Forward render to the inner environment."""
+        return self._env.render(state, **kwargs)
 
     @property
     def observation_space(self) -> ObsSpaceT:

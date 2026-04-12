@@ -327,3 +327,160 @@ class TestJitWrappedVecEnv:
         assert obs.shape == (4, 4, 4, 3)
         assert rewards.shape == (4,)
         assert dones.shape == (4,)
+
+
+# ---------------------------------------------------------------------------
+# RecordVideo tests
+# ---------------------------------------------------------------------------
+
+
+@chex.dataclass
+class _RenderState(EnvState):
+    pass
+
+
+class _RenderEnv(JaxEnv[Box, Discrete, _RenderState]):
+    """Minimal env that implements render()."""
+
+    @property
+    def observation_space(self) -> Box:
+        return Box(low=0, high=255, shape=(2, 2, 3), dtype=jnp.uint8)
+
+    @property
+    def action_space(self) -> Discrete:
+        return Discrete(n=2)
+
+    def reset(self, rng):
+        obs = jnp.full((2, 2, 3), 128, dtype=jnp.uint8)
+        state = _RenderState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
+        return obs, state
+
+    def step(self, state, action):
+        import numpy as np
+
+        new_state = state.__replace__(
+            step=state.step + 1,
+            done=jnp.bool_(state.step + 1 >= self.config.max_steps),
+        )
+        obs = jnp.full((2, 2, 3), 64, dtype=jnp.uint8)
+        return obs, new_state, jnp.float32(1.0), new_state.done, {}
+
+    def render(self, state):
+        import numpy as np
+
+        return np.full((2, 2, 3), 100, dtype=np.uint8)
+
+
+class TestRecordVideo:
+    def test_no_render_raises(self, tmp_path):
+        import pytest
+        from envrax.wrappers import RecordVideo
+
+        with pytest.raises(TypeError, match="requires an environment that implements render"):
+            RecordVideo(_env(), output_dir=tmp_path)
+
+    def test_records_every_episode_by_default(self, tmp_path):
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(
+            _RenderEnv(config=EnvConfig(max_steps=2)),
+            output_dir=tmp_path,
+        )
+        _, state = env.reset(_RNG)
+        assert env.recording is True
+
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+        _, state, _, done, _ = env.step(state, jnp.int32(0))
+        assert bool(done)
+
+        # MP4 should have been written
+        mp4s = list(tmp_path.glob("*.mp4"))
+        assert len(mp4s) == 1
+        assert mp4s[0].name == "episode_0000.mp4"
+
+    def test_episode_trigger(self, tmp_path):
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(
+            _RenderEnv(config=EnvConfig(max_steps=1)),
+            output_dir=tmp_path,
+            episode_trigger=lambda ep: ep == 1,  # skip ep 0, record ep 1
+        )
+
+        # Episode 0 — should NOT record
+        _, state = env.reset(_RNG)
+        assert env.recording is False
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+
+        # Episode 1 — should record
+        _, state = env.reset(_RNG)
+        assert env.recording is True
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+
+        mp4s = list(tmp_path.glob("*.mp4"))
+        assert len(mp4s) == 1
+        assert mp4s[0].name == "episode_0001.mp4"
+
+    def test_recording_trigger(self, tmp_path):
+        from envrax.wrappers import RecordVideo
+
+        should_record = False
+        env = RecordVideo(
+            _RenderEnv(config=EnvConfig(max_steps=1)),
+            output_dir=tmp_path,
+            recording_trigger=lambda: should_record,
+        )
+
+        # Trigger off — should NOT record
+        _, state = env.reset(_RNG)
+        assert env.recording is False
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+
+        # Trigger on — should record
+        should_record = True
+        _, state = env.reset(_RNG)
+        assert env.recording is True
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+
+        mp4s = list(tmp_path.glob("*.mp4"))
+        assert len(mp4s) == 1
+
+    def test_step_trigger_mid_episode(self, tmp_path):
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(
+            _RenderEnv(config=EnvConfig(max_steps=3)),
+            output_dir=tmp_path,
+            step_trigger=lambda s: s >= 2,  # start recording after step 2
+        )
+
+        _, state = env.reset(_RNG)
+        assert env.recording is False  # no episode trigger, step trigger not fired yet
+
+        _, state, _, _, _ = env.step(state, jnp.int32(0))  # step 1
+        assert env.recording is False
+
+        _, state, _, _, _ = env.step(state, jnp.int32(0))  # step 2 — trigger fires
+        assert env.recording is True
+
+        _, state, _, done, _ = env.step(state, jnp.int32(0))  # step 3 — done
+        assert bool(done)
+
+        mp4s = list(tmp_path.glob("*.mp4"))
+        assert len(mp4s) == 1
+
+    def test_recording_property(self, tmp_path):
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(
+            _RenderEnv(config=EnvConfig(max_steps=1)),
+            output_dir=tmp_path,
+            episode_trigger=lambda ep: ep == 0,
+        )
+
+        _, state = env.reset(_RNG)
+        assert env.recording is True
+
+        _, state, _, _, _ = env.step(state, jnp.int32(0))
+        # After done, recording resets
+        assert env.recording is False

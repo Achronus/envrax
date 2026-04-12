@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 import chex
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
 from envrax.env import EnvConfig, EnvState, JaxEnv
@@ -123,6 +124,28 @@ class VecEnv:
         final_state = jax.lax.cond(done, lambda: reset_state, lambda: new_state)
 
         return final_obs, final_state, reward, done, info
+
+    def render(self, state: EnvState, *, index: int = 0) -> np.ndarray:
+        """
+        Render a single environment from the batch.
+
+        Extracts the state at `index` from the batched state pytree and
+        delegates to the inner env's `render()`.
+
+        Parameters
+        ----------
+        state : EnvState
+            Batched environment state
+        index : int (optional)
+            Which environment in the batch to render. Default is `0`.
+
+        Returns
+        -------
+        frame : np.ndarray
+            uint8 RGB array of shape `(H, W, 3)`
+        """
+        single_state = jax.tree.map(lambda x: x[index], state)
+        return self.env.render(single_state)
 
     def compile(self, cache_dir: Path | str | None = DEFAULT_CACHE_DIR) -> None:
         """
