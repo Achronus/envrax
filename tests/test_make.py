@@ -142,12 +142,12 @@ class TestMakeVec:
 
     def test_reset_shape(self):
         vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        obs, _ = vec_env.reset(seed=0)
+        obs, _ = vec_env.reset(jax.random.key(0))
         chex.assert_shape(obs, (4, 8, 8, 3))
 
     def test_step_shape(self):
         vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        _, states = vec_env.reset(seed=0)
+        _, states = vec_env.reset(jax.random.key(0))
         obs, _, rewards, dones, _ = vec_env.step(
             states, jnp.zeros(4, dtype=jnp.int32)
         )

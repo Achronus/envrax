@@ -11,8 +11,6 @@ class VecEnv:
     """
     Wraps any `JaxEnv` to operate over a batch of environments simultaneously.
 
-    Config is read from the inner env (`env.config`).
-
     Parameters
     ----------
     env : JaxEnv
@@ -30,7 +28,7 @@ class VecEnv:
         """Inherits configuration from the wrapped environment."""
         return self.env.config
 
-    def reset(self, seed: int) -> Tuple[chex.Array, EnvState]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, EnvState]:
         """
         Reset all `num_envs` environments with independent random starts.
 
@@ -39,8 +37,8 @@ class VecEnv:
 
         Parameters
         ----------
-        seed : int
-            Random number generator seed
+        rng : chex.PRNGKey
+            JAX PRNG key
 
         Returns
         -------
@@ -49,8 +47,7 @@ class VecEnv:
         states : EnvState
             Batched environment states
         """
-        key = jax.random.key(seed)
-        rngs = jax.random.split(key, self.num_envs)
+        rngs = jax.random.split(rng, self.num_envs)
         return jax.vmap(self.env.reset)(rngs)
 
     def step(

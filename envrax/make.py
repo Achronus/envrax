@@ -121,7 +121,7 @@ def make_vec(
 
     if jit_compile:
         setup_cache(cache_dir)
-        _, _states = vec_env.reset(seed=0)
+        _, _states = vec_env.reset(jax.random.key(0))
         vec_env.step(_states, jnp.zeros(n_envs, dtype=jnp.int32))
 
     return vec_env, resolved_config

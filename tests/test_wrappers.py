@@ -178,12 +178,12 @@ class TestRecordEpisodeStatistics:
 class TestVecEnv:
     def test_reset_batch_shape(self):
         env = VecEnv(_env(), num_envs=4)
-        obs, _ = env.reset(seed=42)
+        obs, _ = env.reset(jax.random.key(42))
         assert obs.shape == (4, 4, 4, 3)
 
     def test_step_batch_shape(self):
         env = VecEnv(_env(), num_envs=4)
-        _, states = env.reset(seed=42)
+        _, states = env.reset(jax.random.key(42))
         actions = jnp.zeros(4, dtype=jnp.int32)
         obs, _, rewards, dones, _ = env.step(states, actions)
         assert obs.shape == (4, 4, 4, 3)
@@ -290,7 +290,7 @@ class TestDeterminism:
 class TestVecEnvAutoReset:
     def test_auto_reset_when_done(self):
         env = VecEnv(_PixelEnv(config=EnvConfig(max_steps=1)), num_envs=1)
-        _, states = env.reset(seed=0)
+        _, states = env.reset(jax.random.key(0))
         actions = jnp.zeros(1, dtype=jnp.int32)
         _, new_states, _, done, _ = env.step(states, actions)
         assert bool(done[0])
@@ -298,7 +298,7 @@ class TestVecEnvAutoReset:
 
     def test_no_reset_when_not_done(self):
         env = VecEnv(_PixelEnv(config=EnvConfig(max_steps=100)), num_envs=1)
-        _, states = env.reset(seed=0)
+        _, states = env.reset(jax.random.key(0))
         actions = jnp.zeros(1, dtype=jnp.int32)
         _, new_states, _, done, _ = env.step(states, actions)
         assert not bool(done[0])
@@ -306,7 +306,24 @@ class TestVecEnvAutoReset:
 
     def test_auto_reset_jit_compatible(self):
         env = VecEnv(_env(), num_envs=2)
-        _, states = env.reset(seed=0)
+        _, states = env.reset(jax.random.key(0))
         actions = jnp.zeros(2, dtype=jnp.int32)
         obs, _, _, _, _ = jax.jit(env.step)(states, actions)
         assert obs.shape == (2, 4, 4, 3)
+
+
+class TestJitWrappedVecEnv:
+    def test_jit_wrapper_around_vec_env(self):
+        from envrax.wrappers import JitWrapper
+
+        vec = VecEnv(_env(), num_envs=4)
+        jit_vec = JitWrapper(vec, cache_dir=None)
+
+        obs, states = jit_vec.reset(jax.random.key(0))
+        assert obs.shape == (4, 4, 4, 3)
+
+        actions = jnp.zeros(4, dtype=jnp.int32)
+        obs, states, rewards, dones, _ = jit_vec.step(states, actions)
+        assert obs.shape == (4, 4, 4, 3)
+        assert rewards.shape == (4,)
+        assert dones.shape == (4,)
