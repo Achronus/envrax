@@ -7,7 +7,6 @@ import jax.numpy as jnp
 import pytest
 
 from envrax.env import EnvConfig, EnvState, JaxEnv
-from envrax.envs import EnvSet, EnvSpec, EnvSuite
 from envrax.make import make
 from envrax.registry import (
     _REGISTRY,
@@ -17,6 +16,7 @@ from envrax.registry import (
     registered_names,
 )
 from envrax.spaces import Box, Discrete
+from envrax.suite import EnvSet, EnvSpec, EnvSuite
 
 # ---------------------------------------------------------------------------
 # Minimal concrete env for testing

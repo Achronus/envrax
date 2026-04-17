@@ -1,7 +1,7 @@
 from typing import Dict, List, Type
 
 from envrax.env import EnvConfig, JaxEnv
-from envrax.envs import EnvSpec, EnvSuite
+from envrax.suite import EnvSpec, EnvSuite
 
 _REGISTRY: Dict[str, EnvSpec] = {}
 

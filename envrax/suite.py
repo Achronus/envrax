@@ -55,8 +55,8 @@ class EnvSuite:
         Namespace prefix for environment names (e.g. `"mjx"`).
     category : str
         Human-readable category label (e.g. `"MuJoCo Playground"`).
-    version : str
-        Version suffix applied by `get_name` (e.g. `"v0"`).
+    version : str (optional)
+        Version suffix applied by `get_name` (e.g. `"v0"`). Default is `v0`
     required_packages : List[str]
         Python packages that must be importable for this suite to work.
     specs : List[EnvSpec]
@@ -171,6 +171,7 @@ class EnvSuite:
         Returns
         -------
         available : bool
+            If required packages are installed.
         """
         return all(self.check().values())
 
@@ -213,6 +214,7 @@ class EnvSet:
         Returns
         -------
         names : List[str]
+            List of canonical IDs for every environment
         """
         names: List[str] = []
         for suite in self._suites:
@@ -226,6 +228,7 @@ class EnvSet:
         Returns
         -------
         categories : Dict[str, int]
+            category name → environment count mapping
         """
         counts: Dict[str, int] = {}
         for s in self._suites:
