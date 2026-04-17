@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, Generic, Self, Tuple, TypeVar, overload
+from typing import Any, Dict, Generic, Self, Tuple, Type, TypeVar, overload
 
 import chex
 import numpy as np
@@ -156,7 +156,7 @@ class StatefulWrapper(
         self._env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT] = env  # type: ignore[assignment]
 
 
-type WrapperType = type[Wrapper] | _WrapperFactory
+type WrapperType = Type[Wrapper] | _WrapperFactory
 """
 A wrapper supplied to factory functions like `make()`.
 
