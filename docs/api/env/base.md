@@ -1,5 +1,7 @@
 # Single Environment
 
+The foundational classes for building a single JAX-native RL environment from scratch.
+
 ::: envrax.env.ObsSpaceT
 
 Observation space generic type.

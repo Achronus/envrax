@@ -1,5 +1,7 @@
 # Pass-through Wrappers
 
+Stateless wrappers that transform observations, actions, or rewards without carrying any state between steps.
+
 ::: envrax.wrappers.jit_wrapper.JitWrapper
 
 ::: envrax.wrappers.clip_reward.ClipReward
