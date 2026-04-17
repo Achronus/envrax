@@ -1,12 +1,57 @@
 # Getting Started
 
-To get started, setup a Python 3.13+ environment and install the package through [pip [:material-arrow-right-bottom:]](https://pypi.org/project/envrax/):
+To get started, setup a Python 3.13+ environment and install the package.
 
-```bash
-pip install envrax
-```
+## Project Setup
 
-Then, head on over to the [tutorials](../tutorials/index.md) or try out the example below!
+If you don't already have a Python project, spin one up with your tool of choice:
+
+=== "uv"
+    ```bash title=""
+    uv init --python 3.13 my-project
+    cd my-project
+    ```
+
+=== "pip (Linux/macOS)"
+    ```bash title=""
+    mkdir my-project && cd my-project
+    python3.13 -m venv .venv
+    source .venv/bin/activate
+    ```
+
+=== "pip (Windows)"
+    ```bash title=""
+    mkdir my-project && cd my-project
+    py -3.13 -m venv .venv
+    .venv\Scripts\activate
+    ```
+
+=== "poetry"
+    ```bash title=""
+    poetry new --python ">=3.13" my-project
+    cd my-project
+    ```
+
+## Install Package
+
+Then, install the package:
+
+=== "uv"
+    ```bash title=""
+    uv add envrax
+    ```
+
+=== "pip"
+    ```bash title=""
+    pip install envrax
+    ```
+
+=== "poetry"
+    ```bash title=""
+    poetry add envrax
+    ```
+
+If you're new, or want a refresher, head on over to the [tutorials](../tutorials/index.md) or try out the example below!
 
 ## Example Usage
 

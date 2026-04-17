@@ -57,7 +57,21 @@ nav:
     - Getting Started: starting/index.md
   - Tutorials:
       - Tutorials: tutorials/index.md
-      - Recording Video: tutorials/recording-video.md
+      - Essentials:
+          - Your First Environment: tutorials/essentials/first-environment.md
+          - State & Dataclasses: tutorials/essentials/state.md
+          - Spaces: tutorials/essentials/spaces.md
+          - Environment Configuration: tutorials/essentials/configuration.md
+          - Vectorising: tutorials/essentials/vectorising.md
+          - Multiple Environments: tutorials/essentials/multi-env.md
+          - The Registry: tutorials/essentials/registry.md
+          - Using Wrappers: tutorials/essentials/wrappers.md
+          - Rendering: tutorials/essentials/rendering.md
+      - Advanced:
+          - Recording Video: tutorials/advanced/recording-video.md
+          - Writing a Custom Wrapper: tutorials/advanced/custom-wrapper.md
+          - Testing your Environment: tutorials/advanced/testing.md
+          - Training an Agent: tutorials/advanced/training.md
   - API Reference:
       - API Reference: api/index.md
       - Environments: 
