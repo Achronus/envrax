@@ -176,7 +176,7 @@ class FrameStackState(EnvState):
 
 That's it! Everything the inner environment provided is preserved, plus whatever its wrapper needs to remember. This is a more advanced topic so we'll build on this in a later tutorial.
 
-For those curious, you can check it out in the [Writing a Custom Wrapper](../advanced/custom-wrapper.md) tutorial.
+For those curious, you can check it out in the [Creating a Custom Wrapper](../advanced/custom-wrapper.md) tutorial.
 
 ## Common Pitfalls
 

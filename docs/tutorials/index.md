@@ -52,6 +52,7 @@ Each tutorial is a task-focused guide for specific features. These can be read i
 | # | Tutorial | Description |
 | - | --- | --- |
 | 1 | [Recording Video](advanced/recording-video.md) | Save episode rollouts as MP4 with `RecordVideo` |
-| 2 | [Writing a Custom Wrapper](advanced/custom-wrapper.md) | Build your own pass-through and stateful wrapper |
-| 3 | [Testing your Environment](advanced/testing.md) | Verify JIT, `jax.vmap`, and determinism |
-| 4 | [Training an Agent](advanced/training.md) | Plug your environment into a JAX-native RL library like [PureJaxRL [:material-arrow-right-bottom:]](https://github.com/luchris429/purejaxrl) |
+| 2 | [Creating a Custom Wrapper](advanced/custom-wrapper.md) | Build your own pass-through and stateful wrapper |
+| 3 | [Creating a Custom Space](advanced/custom-spaces.md) | Subclass `Space` to support data shapes Envrax doesn't ship — simplex, one-hot, bitstring, etc. |
+| 4 | [Testing your Environment](advanced/testing.md) | Verify JIT, `jax.vmap`, and determinism |
+| 5 | [Training an Agent](advanced/training.md) | Plug your environment into a JAX-native RL library like [PureJaxRL [:material-arrow-right-bottom:]](https://github.com/luchris429/purejaxrl) |
