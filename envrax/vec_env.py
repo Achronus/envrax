@@ -8,7 +8,7 @@ import numpy as np
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
 from envrax.env import EnvConfig, EnvState, JaxEnv
-from envrax.spaces import Space, batch_space
+from envrax.spaces import Space
 
 
 class VecEnv:
@@ -177,12 +177,12 @@ class VecEnv:
     @property
     def observation_space(self) -> Space:
         """Batched observation space with a leading `num_envs` dimension."""
-        return batch_space(self.env.observation_space, self.num_envs)
+        return self.env.observation_space.batch(self.num_envs)
 
     @property
     def action_space(self) -> Space:
         """Batched action space with a leading `num_envs` dimension."""
-        return batch_space(self.env.action_space, self.num_envs)
+        return self.env.action_space.batch(self.num_envs)
 
     def __repr__(self) -> str:
         return f"VecEnv<{self.env!r}, num_envs={self.num_envs}>"

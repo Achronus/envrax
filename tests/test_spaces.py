@@ -1,8 +1,7 @@
 import jax
 import jax.numpy as jnp
-import pytest
 
-from envrax.spaces import Box, Discrete, MultiDiscrete, batch_space
+from envrax.spaces import Box, Discrete, MultiDiscrete
 
 
 class TestDiscrete:
@@ -138,41 +137,35 @@ class TestMultiDiscrete:
         assert actions.dtype == jnp.int16
 
 
-class TestBatchSpace:
+class TestBatch:
     def test_discrete_to_multi_discrete(self):
-        batched = batch_space(Discrete(n=4), 8)
+        batched = Discrete(n=4).batch(8)
         assert isinstance(batched, MultiDiscrete)
         assert batched.nvec == (4,) * 8
 
     def test_box_prepends_dimension(self):
-        batched = batch_space(Box(low=0.0, high=1.0, shape=(84, 84, 3), dtype=jnp.float32), 16)
+        batched = Box(low=0.0, high=1.0, shape=(84, 84, 3), dtype=jnp.float32).batch(16)
         assert isinstance(batched, Box)
         assert batched.shape == (16, 84, 84, 3)
         assert batched.low == 0.0
         assert batched.high == 1.0
 
     def test_multi_discrete_repeats(self):
-        batched = batch_space(MultiDiscrete(nvec=(3, 5)), 4)
+        batched = MultiDiscrete(nvec=(3, 5)).batch(4)
         assert isinstance(batched, MultiDiscrete)
         assert batched.nvec == (3, 5) * 4
 
-    def test_unsupported_type_raises(self):
-        with pytest.raises(TypeError):
-            batch_space("not a space", 4)
-
     def test_discrete_preserves_dtype(self):
-        batched = batch_space(Discrete(n=4, dtype=jnp.int64), 8)
+        batched = Discrete(n=4, dtype=jnp.int64).batch(8)
         assert isinstance(batched, MultiDiscrete)
         assert batched.dtype == jnp.int64
 
     def test_multi_discrete_preserves_dtype(self):
-        batched = batch_space(MultiDiscrete(nvec=(3, 5), dtype=jnp.int64), 4)
+        batched = MultiDiscrete(nvec=(3, 5), dtype=jnp.int64).batch(4)
         assert isinstance(batched, MultiDiscrete)
         assert batched.dtype == jnp.int64
 
     def test_box_preserves_dtype(self):
-        batched = batch_space(
-            Box(low=0.0, high=1.0, shape=(4,), dtype=jnp.float64), 8
-        )
+        batched = Box(low=0.0, high=1.0, shape=(4,), dtype=jnp.float64).batch(8)
         assert isinstance(batched, Box)
         assert batched.dtype == jnp.float64

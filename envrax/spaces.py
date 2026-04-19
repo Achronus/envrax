@@ -20,6 +20,26 @@ class Space(ABC):
         """Return True if x is a valid element of this space."""
         ...
 
+    @abstractmethod
+    def batch(self, n: int) -> "Space":
+        """
+        Return a batched version of this space with a leading dimension `n`.
+
+        Called by `VecEnv` to derive batched observation/action spaces.
+        Each concrete subclass decides what "batched" means for itself.
+
+        Parameters
+        ----------
+        n : int
+            Batch size.
+
+        Returns
+        -------
+        batched : Space
+            Space with a leading `n` dimension.
+        """
+        ...
+
 
 @dataclass(frozen=True)
 class Discrete(Space):
@@ -60,7 +80,36 @@ class Discrete(Space):
         )
 
     def contains(self, x: chex.Array) -> bool:
+        """
+        Return True if `x` is a valid action index.
+
+        Parameters
+        ----------
+        x : chex.Array
+            Action to validate. Expected to be an integer scalar.
+
+        Returns
+        -------
+        valid : bool
+            True if `x` lies in `[0, n)`, False otherwise.
+        """
         return bool((x >= 0) & (x < self.n))
+
+    def batch(self, n: int) -> "MultiDiscrete":
+        """
+        Batch `n` copies into a `MultiDiscrete` with identical sub-spaces.
+
+        Parameters
+        ----------
+        n : int
+            Batch size.
+
+        Returns
+        -------
+        batched : MultiDiscrete
+            `MultiDiscrete(nvec=(self.n,) * n, dtype=self.dtype)`.
+        """
+        return MultiDiscrete(nvec=(self.n,) * n, dtype=self.dtype)
 
 
 @dataclass(frozen=True)
@@ -116,8 +165,42 @@ class Box(Space):
         ).astype(self.dtype)
 
     def contains(self, x: chex.Array) -> bool:
+        """
+        Return True if `x` is a valid observation within the space.
+
+        Parameters
+        ----------
+        x : chex.Array
+            Observation to validate. Expected to match `self.shape`.
+
+        Returns
+        -------
+        valid : bool
+            True if `x.shape == self.shape` and every element lies in `[low, high]`.
+        """
         return bool(
             (x.shape == self.shape) & jnp.all(x >= self.low) & jnp.all(x <= self.high)
+        )
+
+    def batch(self, n: int) -> "Box":
+        """
+        Prepend a leading `n` dimension to the shape.
+
+        Parameters
+        ----------
+        n : int
+            Batch size.
+
+        Returns
+        -------
+        batched : Box
+            `Box` with shape `(n, *self.shape)` and unchanged bounds/dtype.
+        """
+        return Box(
+            low=self.low,
+            high=self.high,
+            shape=(n, *self.shape),
+            dtype=self.dtype,
         )
 
 
@@ -162,52 +245,40 @@ class MultiDiscrete(Space):
         )
 
     def contains(self, x: chex.Array) -> bool:
+        """
+        Return True if `x` is a valid multi-discrete action vector.
+
+        Parameters
+        ----------
+        x : chex.Array
+            Action vector to validate. Expected to have shape `(len(nvec),)`.
+
+        Returns
+        -------
+        valid : bool
+            True if `x` has shape `(len(nvec),)` and each `x[i]` is in `[0, nvec[i])`.
+        """
         if x.shape != (len(self.nvec),):
             return False
 
         nvec_arr = jnp.array(self.nvec, dtype=self.dtype)
         return bool(jnp.all(x >= 0) & jnp.all(x < nvec_arr))
 
+    def batch(self, n: int) -> "MultiDiscrete":
+        """
+        Repeat `nvec` `n` times to form a wider `MultiDiscrete`.
 
-def batch_space(space: Space, n: int) -> Space:
-    """
-    Create a batched version of a space by prepending a leading dimension.
+        Parameters
+        ----------
+        n : int
+            Batch size.
 
-    Format -
-        - `Discrete(k)` → `MultiDiscrete((k,) * n)`
-        - `Box(low, high, shape, dtype)` → `Box(low, high, (n, *shape), dtype)`
-        - `MultiDiscrete(nvec)` → `MultiDiscrete(nvec * n)`
-
-    Parameters
-    ----------
-    space : Space
-        Single-instance space.
-    n : int
-        Batch size.
-
-    Returns
-    -------
-    batched : Space
-        Space with a leading `n` dimension.
-    """
-    if isinstance(space, Discrete):
+        Returns
+        -------
+        batched : MultiDiscrete
+            `MultiDiscrete(nvec=self.nvec * n, dtype=self.dtype)`.
+        """
         return MultiDiscrete(
-            nvec=(space.n,) * n,
-            dtype=space.dtype,
+            nvec=self.nvec * n,
+            dtype=self.dtype,
         )
-
-    if isinstance(space, Box):
-        return Box(
-            low=space.low,
-            high=space.high,
-            shape=(n, *space.shape),
-            dtype=space.dtype,
-        )
-
-    if isinstance(space, MultiDiscrete):
-        return MultiDiscrete(
-            nvec=space.nvec * n,
-            dtype=space.dtype,
-        )
-
-    raise TypeError(f"batch_space does not support {type(space).__name__}")

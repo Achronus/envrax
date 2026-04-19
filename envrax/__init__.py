@@ -4,7 +4,7 @@ from envrax.make import make, make_multi, make_multi_vec, make_vec
 from envrax.multi_env import MultiEnv
 from envrax.multi_vec_env import MultiVecEnv
 from envrax.registry import get_spec, register, register_suite, registered_names
-from envrax.spaces import Box, Discrete, MultiDiscrete, Space, batch_space
+from envrax.spaces import Box, Discrete, MultiDiscrete, Space
 from envrax.suite import EnvSet, EnvSpec, EnvSuite
 from envrax.vec_env import VecEnv
 from envrax.wrappers import (
@@ -51,7 +51,6 @@ __all__ = [
     "ResizeObservation",
     "Space",
     "StatefulWrapper",
-    "batch_space",
     "VecEnv",
     "Wrapper",
     "get_spec",

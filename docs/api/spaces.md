@@ -9,5 +9,3 @@ Specifications/contracts for describing the shape and domain of observations and
 ::: envrax.spaces.Box
 
 ::: envrax.spaces.MultiDiscrete
-
-::: envrax.spaces.batch_space
