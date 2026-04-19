@@ -35,6 +35,16 @@ class TestDiscrete:
         assert not space.contains(jnp.int32(6))
         assert not space.contains(jnp.int32(-1))
 
+    def test_default_dtype(self):
+        space = Discrete(n=6)
+        assert space.dtype == jnp.int32
+
+    def test_custom_dtype(self):
+        space = Discrete(n=6, dtype=jnp.int16)
+        rng = jax.random.PRNGKey(0)
+        action = space.sample(rng)
+        assert action.dtype == jnp.int16
+
 
 class TestBox:
     def test_sample_shape(self):
@@ -117,6 +127,16 @@ class TestMultiDiscrete:
         assert actions.shape == (4,)
         assert jnp.all(actions < 5)
 
+    def test_default_dtype(self):
+        space = MultiDiscrete(nvec=(4, 6, 3))
+        assert space.dtype == jnp.int32
+
+    def test_custom_dtype(self):
+        space = MultiDiscrete(nvec=(4, 6, 3), dtype=jnp.int16)
+        rng = jax.random.PRNGKey(0)
+        actions = space.sample(rng)
+        assert actions.dtype == jnp.int16
+
 
 class TestBatchSpace:
     def test_discrete_to_multi_discrete(self):
@@ -139,3 +159,20 @@ class TestBatchSpace:
     def test_unsupported_type_raises(self):
         with pytest.raises(TypeError):
             batch_space("not a space", 4)
+
+    def test_discrete_preserves_dtype(self):
+        batched = batch_space(Discrete(n=4, dtype=jnp.int64), 8)
+        assert isinstance(batched, MultiDiscrete)
+        assert batched.dtype == jnp.int64
+
+    def test_multi_discrete_preserves_dtype(self):
+        batched = batch_space(MultiDiscrete(nvec=(3, 5), dtype=jnp.int64), 4)
+        assert isinstance(batched, MultiDiscrete)
+        assert batched.dtype == jnp.int64
+
+    def test_box_preserves_dtype(self):
+        batched = batch_space(
+            Box(low=0.0, high=1.0, shape=(4,), dtype=jnp.float64), 8
+        )
+        assert isinstance(batched, Box)
+        assert batched.dtype == jnp.float64

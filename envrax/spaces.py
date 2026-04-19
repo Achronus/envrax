@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Type
 
 import chex
 import jax
@@ -30,9 +30,12 @@ class Discrete(Space):
     ----------
     n : int
         Number of discrete actions.
+    dtype : Type
+        Element dtype. Defaults to `jnp.int32`.
     """
 
     n: int
+    dtype: Type = jnp.int32
 
     def sample(self, rng: chex.Array) -> chex.Array:
         """
@@ -53,7 +56,7 @@ class Discrete(Space):
             shape=(),
             minval=0,
             maxval=self.n,
-            dtype=jnp.int32,
+            dtype=self.dtype,
         )
 
     def contains(self, x: chex.Array) -> bool:
@@ -67,20 +70,20 @@ class Box(Space):
 
     Parameters
     ----------
-    low : float
+    low : float | int
         Lower bound (inclusive) applied to all elements.
-    high : float
+    high : float | int
         Upper bound (inclusive) applied to all elements.
     shape : Tuple[int, ...]
         Shape of a single observation.
-    dtype : type
+    dtype : Type
         Element dtype. Defaults to `jnp.float32`.
     """
 
-    low: float
-    high: float
+    low: float | int
+    high: float | int
     shape: Tuple[int, ...]
-    dtype: type = jnp.float32
+    dtype: Type = jnp.float32
 
     def sample(self, rng: chex.Array) -> chex.Array:
         """
@@ -128,9 +131,12 @@ class MultiDiscrete(Space):
     ----------
     nvec : Tuple[int, ...]
         Number of actions for each discrete sub-space.
+    dtype : Type
+        Element dtype. Defaults to `jnp.int32`.
     """
 
     nvec: Tuple[int, ...]
+    dtype: Type = jnp.int32
 
     def sample(self, rng: chex.Array) -> chex.Array:
         """
@@ -146,20 +152,20 @@ class MultiDiscrete(Space):
         actions : chex.Array
             `int32[len(nvec)]` — One sampled action per sub-space.
         """
-        nvec_arr = jnp.array(self.nvec, dtype=jnp.int32)
+        nvec_arr = jnp.array(self.nvec, dtype=self.dtype)
         return jax.random.randint(
             rng,
             shape=(len(self.nvec),),
             minval=0,
             maxval=nvec_arr,
-            dtype=jnp.int32,
+            dtype=self.dtype,
         )
 
     def contains(self, x: chex.Array) -> bool:
         if x.shape != (len(self.nvec),):
             return False
 
-        nvec_arr = jnp.array(self.nvec, dtype=jnp.int32)
+        nvec_arr = jnp.array(self.nvec, dtype=self.dtype)
         return bool(jnp.all(x >= 0) & jnp.all(x < nvec_arr))
 
 
@@ -185,7 +191,10 @@ def batch_space(space: Space, n: int) -> Space:
         Space with a leading `n` dimension.
     """
     if isinstance(space, Discrete):
-        return MultiDiscrete(nvec=(space.n,) * n)
+        return MultiDiscrete(
+            nvec=(space.n,) * n,
+            dtype=space.dtype,
+        )
 
     if isinstance(space, Box):
         return Box(
@@ -196,6 +205,9 @@ def batch_space(space: Space, n: int) -> Space:
         )
 
     if isinstance(space, MultiDiscrete):
-        return MultiDiscrete(nvec=space.nvec * n)
+        return MultiDiscrete(
+            nvec=space.nvec * n,
+            dtype=space.dtype,
+        )
 
     raise TypeError(f"batch_space does not support {type(space).__name__}")
