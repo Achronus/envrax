@@ -16,6 +16,7 @@ These tutorials assume:
 - Python 3.13+ is installed with Envrax. If not, refer to :point_right: [Getting Started](../starting/index.md)
 - Basic familiarity with [JAX [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/) — particularly `jax.jit`, `jax.vmap`, and `jax.random`
 - Comfort with Python [dataclasses [:material-arrow-right-bottom:]](https://docs.python.org/latest/library/dataclasses.html) and [generics [:material-arrow-right-bottom:]](https://typing.python.org/en/latest/reference/generics.html)
+- Basic familiarity with chex [dataclasses [:material-arrow-right-bottom:]](https://chex.readthedocs.io/en/latest/api.html#dataclasses)
 
 If any of that is unfamiliar, we highly recommend referring to the linked resources first and come back once comfortable. You'll get more out of the tutorials that way!
 
@@ -31,9 +32,9 @@ We recommend completing the tutorials in order below to get the most out of this
 
 | # | Tutorial | Teaches |
 | - | --- | --- |
-| 1 | [Your First Environment](essentials/first-environment.md) | Subclassing `JaxEnv`, implement the primary methods `reset` and `step`, and how to use it |
-| 2 | [State & Dataclasses](essentials/state.md) | Extending `EnvState`, threading `rng`, and managing per-episode fields |
-| 3 | [Spaces](essentials/spaces.md) | Using contracts such as `Box`, `Discrete`, and `MultiDiscrete` to describe your environment |
+| 1 | [State](essentials/state.md) | What state is, extending `EnvState`, threading `rng`, and managing per-episode fields |
+| 2 | [Spaces](essentials/spaces.md) | What spaces are and using contracts like `Box`, `Discrete`, and `MultiDiscrete` to describe your environment |
+| 3 | [Your First Environment](essentials/first-environment.md) | Subclassing `JaxEnv`, implement the primary methods `reset` and `step`, and how to use it |
 | 4 | [Environment Configuration](essentials/configuration.md) | Extending `EnvConfig` with your own static fields |
 | 5 | [Vectorising with `VecEnv`](essentials/vectorising.md) | Running `N` parallel copies via `jax.vmap` |
 | 6 | [Multiple Environments](essentials/multi-env.md) | Managing `M` heterogeneous envs with `MultiEnv` / `MultiVecEnv` |
