@@ -133,16 +133,16 @@ Both `sample(rng)` and `contains(x)` are available on every space, which you'll 
 
 ## Next Steps
 
-That's the fundamental concepts down, now let's use them to build your first environment!
+Two foundational pieces down. Next up: how environments hold their static, per-env settings via `EnvConfig`!
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch:{ .lg .middle } __Your First Environment__
+-   :material-cog-outline:{ .lg .middle } __Environment Configuration__
 
     ---
 
-    Learn how to build your first `JaxEnv`.
+    Learn how to extend `EnvConfig` with your own static fields and how it differs from `EnvState`.
 
-    [:octicons-arrow-right-24: Continue to Tutorial 3](first-environment.md)
+    [:octicons-arrow-right-24: Continue to Tutorial 3](configuration.md)
 
 </div>

@@ -1,9 +1,10 @@
 # Your First Environment
 
-Welcome back! So far, you've developed your understanding of the two foundational pieces for building Envrax environments:
+Welcome back! So far, you've developed your understanding of the three foundational pieces for building Envrax environments:
 
 - [State](state.md) — the immutable snapshot of your environment
 - [Spaces](spaces.md) — the contracts describing observations and actions
+- [Configuration](configuration.md) — the static settings that drive its dynamics
 
 Now, it's time to wire them together into a working environment!
 
@@ -18,8 +19,17 @@ From our first tutorial ([State](state.md)) we already created our `BallState`, 
 ```python
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: jnp.float32
-    ball_y: jnp.float32
+    ball_x: chex.Array
+    ball_y: chex.Array
+```
+
+We'll also reuse the `BallConfig` from [Configuration](configuration.md):
+
+```python
+@chex.dataclass
+class BallConfig(EnvConfig):
+    friction: float = 0.98
+    reward_scale: float = 1.0
 ```
 
 What we didn't discuss was the types of `Spaces` we were going to use. Recall that we need two: an `observation` space and an `action` space.
@@ -47,7 +57,7 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
     import jax
     import jax.numpy as jnp
 
-    from envrax import JaxEnv, EnvState
+    from envrax import JaxEnv, EnvState, EnvConfig
     from envrax.spaces import Box, Discrete
 
 
@@ -57,7 +67,13 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
         ball_y: jnp.float32
 
 
-    class BallEnv(JaxEnv[Box, Discrete, BallState]):
+    @chex.dataclass
+    class BallConfig(EnvConfig):
+        friction: float = 0.98
+        reward_scale: float = 1.0
+
+
+    class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
         @property
         def observation_space(self) -> Box:
             return Box(low=0.0, high=1.0, shape=(2,), dtype=jnp.float32)
@@ -84,8 +100,8 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
 
             # Use action to get new obs
             # action: 0=left, 1=right, 2=up, 3=down
-            dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action]
-            dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action]
+            dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action] * self.config.friction
+            dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action] * self.config.friction
 
             # Get bounds
             low, high = self.observation_space.low, self.observation_space.high
@@ -106,7 +122,7 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
             obs = jnp.array([new_state.ball_x, new_state.ball_y])
 
             # Compute reward, done, and info
-            reward = jnp.float32(1.0)
+            reward = jnp.float32(1.0) * self.config.reward_scale
             done = new_state.step >= self.config.max_steps
             info = {"current_step": new_state.step}
 
@@ -155,9 +171,10 @@ We can build an Envrax environment in three easy steps:
         ObsSpaceT = TypeVar("ObsSpaceT", bound=Space)
         ActSpaceT = TypeVar("ActSpaceT", bound=Space)
         StateT = TypeVar("StateT", bound="EnvState")
+        ConfigT = TypeVar("ConfigT", bound="EnvConfig")
 
 
-        class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
+        class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
             @property
             @abstractmethod
             def observation_space(self) -> ObsSpaceT: ...
@@ -178,9 +195,9 @@ We can build an Envrax environment in three easy steps:
     Two things worth mentioning:
 
     - **`ABC`** — marks the class as *abstract*, forcing subclasses to implement every method marked with `@abstractmethod` before they can be instantiated.
-    - **`Generic[ObsSpaceT, ActSpaceT, StateT]`** — declares three type parameters, each `bound` to its base type (`Space` or `EnvState`). So, when you write `JaxEnv[Box, Discrete, BallState]`, you're *pinning* those TypeVars to concrete types for this subclass. This allows your IDE to know which type is being used and can perform autocompletion correctly without hacky overrides or `# type: ignore`.
+    - **`Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]`** — declares four type parameters, each `bound` to its base type (`Space`, `EnvState`, or `EnvConfig`). So, when you write `JaxEnv[Box, Discrete, BallState, BallConfig]`, you're *pinning* those TypeVars to concrete types for this subclass. This allows your IDE to know which type is being used and can perform autocompletion correctly without hacky overrides or `# type: ignore`.
 
-Every Envrax environment **must** subclass `JaxEnv` and pin three data types for IDE support. These are (in order): the observation space, action space, and the environment state.
+Every Envrax environment **must** subclass `JaxEnv` and pin four data types for IDE support. These are (in order): the observation space, action space, the environment state, and the environment config.
 
 In our case, we have `Box`, `Discrete` and our custom `BallState`:
 
@@ -188,7 +205,7 @@ In our case, we have `Box`, `Discrete` and our custom `BallState`:
 from envrax import JaxEnv
 from envrax.spaces import Box, Discrete
 
-class BallEnv(JaxEnv[Box, Discrete, BallState]): # (1)
+class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]): # (1)
     ...
 ```
 
@@ -199,7 +216,7 @@ class BallEnv(JaxEnv[Box, Discrete, BallState]): # (1)
 Next, we declare the `observation_space` and `action_space` as properties on the class:
 
 ```python
-class BallEnv(JaxEnv[Box, Discrete, BallState]):
+class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
     @property
     def observation_space(self) -> Box:
         return Box(low=0.0, high=1.0, shape=(2,), dtype=jnp.float32)
@@ -318,8 +335,8 @@ Then, we'll use `jnp.clip` to increment our ball state while keeping its values 
     ...
     # Use action to get new obs
     # action: 0=left, 1=right, 2=up, 3=down
-    dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action]
-    dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action]
+    dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action] * self.config.friction
+    dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action] * self.config.friction
 
     # Get bounds
     low, high = self.observation_space.low, self.observation_space.high
@@ -329,6 +346,8 @@ Then, we'll use `jnp.clip` to increment our ball state while keeping its values 
     new_y = jnp.clip(state.ball_y + dy, low, high)
     ...
 ```
+
+Notice how we've used the `self.config.friction` config field here (`BallConfig.friction`). To give that real ball feel, every per-step displacement is scaled by friction. If we reduce it to `0.5`, the ball will move more sluggishly, but if we bump it up to `1.0`, it moves at full speed.
 
 If we wanted, we could separate this out into a separate `_act()` method on the environment class to keep our `step()` method easy to read. We won't do that here for this simple tutorial, but something to think about when building more complex ones! :wink:
 
@@ -351,9 +370,9 @@ Now, we use the `.replace()` method to update the `EnvState` and create the obse
 
 Notice how we incremented our `step` here so that we can track things accordingly. Okay, 3/7 down! Next, the reward signal, our done flag and the metadata.
 
-For this example, we'll always give our agent a reward of `1.0` just to demonstrate the API usage. Reward function creation and reward shaping is a beast of its own that is out of the scope of this tutorial series. Google DeepMind provide a great post about [Specification Gaming [:material-arrow-right-bottom:]](https://deepmind.google/blog/specification-gaming-the-flip-side-of-ai-ingenuity/) that highlights some of the challenges when building reward functions. Highly recommend considering it when building your own!
+For this example, we'll give our agent a flat `1.0` per step, scaled by `self.config.reward_scale` from our `BallConfig`. Reward function creation and reward shaping is a beast of its own that is out of the scope of this tutorial series. Google DeepMind provide a great post about [Specification Gaming [:material-arrow-right-bottom:]](https://deepmind.google/blog/specification-gaming-the-flip-side-of-ai-ingenuity/) that highlights some of the challenges when building reward functions. Highly recommend considering it when building your own!
 
-For our termination flag, we'll simply check to see if the current step matches the `config.max_steps` for our `EnvConfig`. We'll talk about this more in the [Environment Configuration](configuration.md) tutorial.
+For our termination flag, we'll simply check to see if the current step matches the `config.max_steps` for our `BallConfig` (inherited from `EnvConfig`).
 
 For our metadata we'll just return a Python `Dict` with the current step count.
 
@@ -361,13 +380,13 @@ Here's what all of that looks like:
 
 ```python
     ...
-    reward = jnp.float32(1.0)
+    reward = jnp.float32(1.0) * self.config.reward_scale
     done = new_state.step >= self.config.max_steps
     info = {"current_step": new_state.step}
     ...
 ```
 
-??? note "Customization"
+??? info "Customization"
 
     These three values (`reward`, `done`, `info`) can be far more complicated and customized depending on your environments complexity. 
     
@@ -383,8 +402,8 @@ def step(self, state: BallState, action: chex.Array):
 
     # Use action to get new obs
     # action: 0=left, 1=right, 2=up, 3=down
-    dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action]
-    dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action]
+    dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action] * self.config.friction
+    dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action] * self.config.friction
 
     # Get bounds
     low, high = self.observation_space.low, self.observation_space.high
@@ -405,7 +424,7 @@ def step(self, state: BallState, action: chex.Array):
     obs = jnp.array([new_state.ball_x, new_state.ball_y])
     
     # Compute reward, done, and info
-    reward = jnp.float32(1.0)
+    reward = jnp.float32(1.0) * self.config.reward_scale
     done = new_state.step >= self.config.max_steps
     info = {"current_step": new_state.step}
 
@@ -449,7 +468,7 @@ Excellent job! You've just built your first `JaxEnv` environment! :partying_face
 
 Here's a quick recap of what we've covered:
 
-- [x] Declared a `BallEnv` class subclassing `JaxEnv[Box, Discrete, BallState]`
+- [x] Declared a `BallEnv` class subclassing `JaxEnv[Box, Discrete, BallState, BallConfig]`
 - [x] Defined the `observation_space` and `action_space` as properties on the class
 - [x] Implemented the `reset` and `step` methods to drive the environment's transitions
 - [x] Tested it by running the `reset → step` loop
@@ -460,12 +479,12 @@ Next, we'll explore the `EnvConfig` and how to customize it.
 
 <div class="grid cards" markdown>
 
--   :material-cog-outline:{ .lg .middle } __Environment Configuration__
+-   :material-vector-arrange-above:{ .lg .middle } __Vectorising with `VecEnv`__
 
     ---
 
-    Explore how to use and extend `EnvConfig`.
+    Learn how to run `N` parallel copies of your environments.
 
-    [:octicons-arrow-right-24: Continue to Tutorial 4](configuration.md)
+    [:octicons-arrow-right-24: Continue to Tutorial 5](vectorising.md)
 
 </div>
