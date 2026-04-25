@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax
@@ -7,11 +7,11 @@ import jax.numpy as jnp
 import numpy as np
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.env import EnvConfig, EnvState, JaxEnv
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.spaces import Space
 
 
-class VecEnv:
+class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Wraps any `JaxEnv` to operate over a batch of environments simultaneously.
 
@@ -23,16 +23,20 @@ class VecEnv:
         Number of parallel environments
     """
 
-    def __init__(self, env: JaxEnv, num_envs: int) -> None:
+    def __init__(
+        self,
+        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT],
+        num_envs: int,
+    ) -> None:
         self.env = env
         self.num_envs = num_envs
 
     @property
-    def config(self) -> EnvConfig:
-        """Inherits configuration from the wrapped environment."""
+    def config(self) -> ConfigT:
+        """Single environment configuration."""
         return self.env.config
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, EnvState]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Reset all `num_envs` environments with independent random starts.
 
@@ -56,9 +60,9 @@ class VecEnv:
 
     def step(
         self,
-        state: EnvState,
+        state: StateT,
         actions: chex.Array,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Advance all environments by one step simultaneously.
 
@@ -94,9 +98,9 @@ class VecEnv:
 
     def _step_env(
         self,
-        state: EnvState,
+        state: StateT,
         action: chex.Array,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Single-env step that auto-resets on episode end.
 
@@ -125,7 +129,7 @@ class VecEnv:
 
         return final_obs, final_state, reward, done, info
 
-    def render(self, state: EnvState, *, index: int = 0) -> np.ndarray:
+    def render(self, state: StateT, *, index: int = 0) -> np.ndarray:
         """
         Render a single environment from the batch.
 
@@ -165,12 +169,12 @@ class VecEnv:
         self.step(_state, jnp.zeros(self.num_envs, dtype=jnp.int32))
 
     @property
-    def single_observation_space(self) -> Space:
+    def single_observation_space(self) -> ObsSpaceT:
         """Observation space of a single inner environment."""
         return self.env.observation_space
 
     @property
-    def single_action_space(self) -> Space:
+    def single_action_space(self) -> ActSpaceT:
         """Action space of a single inner environment."""
         return self.env.action_space
 
