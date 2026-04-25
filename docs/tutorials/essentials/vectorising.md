@@ -1,5 +1,9 @@
 # Vectorising with `VecEnv`
 
+???+ api "API Docs"
+
+    [`envrax.vec_env.VecEnv`](../../api/env/vec.md#envrax.vec_env.VecEnv)
+
 Excellent work building your first environment! If you wanted to, you could stop there and start using Envrax in your own projects right **now** for your own RL experiments, but a single environment is quite... inefficient.
 
 Think about it - a single `JaxEnv` runs one environment for one episode at a time. If you wanted to run over 1 million timesteps to train your policy, that's incredibly sample inefficient and could weeks to finish training.
