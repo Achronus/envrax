@@ -25,7 +25,11 @@ For three reasons:
 
 Envrax ships with three space types: `Discrete`, `Box` and `MultiDiscrete`.
 
-All of them have a `sample(rng)` method for drawing a random element and a `contains(x)` method for checking membership.
+All of them implement three methods from the `Space` contract:
+
+- **`sample(rng)`** — draw a random element
+- **`contains(x)`** — check if `x` is a valid element of the space
+- **`batch(n)`** — return a batched version of the space with a leading dimension `n`.
 
 ### Discrete
 
@@ -50,6 +54,7 @@ space.n                # 4 - number of available actions
 # Methods
 action = space.sample(jax.random.key(0))   # E.g., int32(2)
 space.contains(action)                     # True
+space.batch(8)                             # MultiDiscrete(nvec=(4,)*8, dtype=jnp.int32)
 ```
 
 Because `n` is a static Python `int`, you can use it directly in shape declarations or `jnp.arange(space.n)` without issues.
@@ -75,6 +80,7 @@ space.shape   # (2,) - tuple describing a single element's shape
 # Methods
 action = space.sample(jax.random.key(0))   # E.g., jnp.float32((2,))
 space.contains(action)                     # True
+space.batch(8)                             # Box(low=0.0, high=1.0, shape=(8, 2), dtype=jnp.float32)
 ```
 
 Integer dtypes are also supported:
@@ -101,6 +107,7 @@ space.shape   # (3,) - tuple describing the spaces shape
 # Methods
 action = space.sample(jax.random.key(0))   # E.g., int32[3] — one pick per sub-space
 space.contains(action)                     # True
+space.batch(2)                             # MultiDiscrete(nvec=(4, 2, 2, 4, 2, 2), dtype=jnp.int32)
 ```
 
 Each element `i` of the sampled action satisfies `0 <= action[i] < nvec[i]`.
@@ -129,7 +136,7 @@ And that's that! Nice job :smile:! Let's quickly recap:
 - Use `Box(low, high, shape, dtype)` for continuous arrays or images
 - Use `MultiDiscrete(nvec)` for a vector of independent categorical choices
 
-Both `sample(rng)` and `contains(x)` are available on every space, which you'll use in testing and wrappers.
+All three `Space` methods — `sample(rng)`, `contains(x)`, and `batch(n)` — are available on every space, ready for use in testing, wrappers, and `VecEnv`.
 
 ## Next Steps
 

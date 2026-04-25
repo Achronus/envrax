@@ -38,9 +38,10 @@ We recommend completing the tutorials in order below to get the most out of this
 | 4 | [Your First Environment](essentials/first-environment.md) | Subclassing `JaxEnv`, implement the primary methods `reset` and `step`, and how to use it |
 | 5 | [Vectorising with `VecEnv`](essentials/vectorising.md) | Running `N` parallel copies via `jax.vmap` |
 | 6 | [Multiple Environments](essentials/multi-env.md) | Managing `M` heterogeneous envs with `MultiEnv` / `MultiVecEnv` |
-| 7 | [The Registry](essentials/registry.md) | Registering envs and create them with the `make()` method |
-| 8 | [Using Wrappers](essentials/wrappers.md) | Using built-in wrappers to transform observations and rewards |
-| 9 | [Rendering](essentials/rendering.md) | Implementing `render(state)` for visual inspection |
+| 7 | [Environment Registry](essentials/registry.md) | Registering envs by name and discovering registered specs |
+| 8 | [Make Methods](essentials/make.md) | Constructing registered envs with `make()`, `make_vec()`, `make_multi()`, and `make_multi_vec()` |
+| 9 | [Available Wrappers](essentials/wrappers.md) | A catalogue of built-in wrappers for transforming observations, rewards, and episode statistics |
+| 10 | [Rendering](essentials/rendering.md) | Implementing `render(state)` for visual inspection |
 
 ## Advanced
 
@@ -54,5 +55,6 @@ Each tutorial is a task-focused guide for specific features. These can be read i
 | 1 | [Recording Video](advanced/recording-video.md) | Save episode rollouts as MP4 with `RecordVideo` |
 | 2 | [Creating a Custom Wrapper](advanced/custom-wrapper.md) | Build your own pass-through and stateful wrapper |
 | 3 | [Creating a Custom Space](advanced/custom-spaces.md) | Subclass `Space` to support data shapes Envrax doesn't ship — simplex, one-hot, bitstring, etc. |
-| 4 | [Testing your Environment](advanced/testing.md) | Verify JIT, `jax.vmap`, and determinism |
-| 5 | [Training an Agent](advanced/training.md) | Plug your environment into a JAX-native RL library like [PureJaxRL [:material-arrow-right-bottom:]](https://github.com/luchris429/purejaxrl) |
+| 4 | [Debugging JIT'd Environments](advanced/debugging.md) | Trace-aware logging, in-JIT assertions, and the `info`-channel pattern for observing what your env actually does |
+| 5 | [Testing your Environment](advanced/testing.md) | Verify JIT, `jax.vmap`, and determinism |
+| 6 | [Training an Agent](advanced/training.md) | Plug your environment into a JAX-native RL library like [PureJaxRL [:material-arrow-right-bottom:]](https://github.com/luchris429/purejaxrl) |

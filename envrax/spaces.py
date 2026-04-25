@@ -25,9 +25,6 @@ class Space(ABC):
         """
         Return a batched version of this space with a leading dimension `n`.
 
-        Called by `VecEnv` to derive batched observation/action spaces.
-        Each concrete subclass decides what "batched" means for itself.
-
         Parameters
         ----------
         n : int
@@ -207,7 +204,7 @@ class Box(Space):
 @dataclass(frozen=True)
 class MultiDiscrete(Space):
     """
-    Multi-discrete action space — a vector of independent discrete actions,
+    A vector of independent discrete actions,
     each with its own number of options.
 
     Parameters

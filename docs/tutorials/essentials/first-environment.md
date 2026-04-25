@@ -462,6 +462,31 @@ print("step:", state.step)     # 1
 
 That's it! The full `reset → step` loop! :star_struck:
 
+## Using Wrappers
+
+Envrax ships with a set of *wrappers* that transform observations, rewards, or termination flags without touching your env's code. They're applied like onion layers - each takes an inner env and returns a new one with the same `reset`/`step` interface but with added functionality (where appropriate):
+
+```python
+from envrax.wrappers import ClipReward, NormalizeObservation
+
+env = BallEnv()
+env = NormalizeObservation(env)    # observations → float32 in [0, 1]
+env = ClipReward(env)              # reward → sign(reward)
+```
+
+For production setups, the [`make()`](make.md) factory method is useful for doing this automatically:
+
+```python
+import envrax
+
+env, config = envrax.make(
+    "BallEnv-v0",
+    wrappers=[NormalizeObservation, ClipReward],
+)
+```
+
+We'll dive into specific wrappers in [Available Wrappers](wrappers.md) and walk through every factory method in the [Make Methods](make.md) tutorial. For now, just know they exist! :wink:
+
 ## Recap
 
 Excellent job! You've just built your first `JaxEnv` environment! :partying_face:
