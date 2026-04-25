@@ -171,6 +171,36 @@ class TestMultiVecEnv:
         with pytest.raises(ValueError, match="at least one"):
             MultiVecEnv([])
 
+    def test_step_too_few_actions_raises(self):
+        import pytest
+
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),
+            VecEnv(_PixEnv(config=_CONFIG), _N_ENVS),
+        ])
+        _, states = multi.reset(_RNG)
+        actions = [jnp.zeros(_N_ENVS, dtype=jnp.int32)]   # only 1, expected 2
+
+        with pytest.raises(ValueError, match="expected 2 states and actions"):
+            multi.step(states, actions)
+
+    def test_step_too_many_states_raises(self):
+        import pytest
+
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),
+            VecEnv(_PixEnv(config=_CONFIG), _N_ENVS),
+        ])
+        _, states = multi.reset(_RNG)
+        actions = [
+            jnp.zeros(_N_ENVS, dtype=jnp.int32),
+            jnp.zeros(_N_ENVS, dtype=jnp.int32),
+        ]
+        states = states + [states[0]]   # 3 states, expected 2
+
+        with pytest.raises(ValueError, match="got 3 states and 2 actions"):
+            multi.step(states, actions)
+
     def test_compile(self):
         multi = MultiVecEnv([
             VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),

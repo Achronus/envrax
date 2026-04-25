@@ -136,7 +136,18 @@ class MultiEnv:
             Per-env terminal flags
         infos : List[Dict[str, Any]]
             Per-env info dicts
+
+        Raises
+        ------
+        length_mismatch : ValueError
+            If `len(states)` or `len(actions)` does not match `num_envs`.
         """
+        if len(states) != self.num_envs or len(actions) != self.num_envs:
+            raise ValueError(
+                f"MultiEnv.step: expected {self.num_envs} states and actions, "
+                f"got {len(states)} states and {len(actions)} actions."
+            )
+
         results = [
             env.step(state, action)
             for env, state, action in zip(self._envs, states, actions)

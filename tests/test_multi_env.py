@@ -158,6 +158,27 @@ class TestMultiEnv:
         with pytest.raises(ValueError, match="at least one"):
             MultiEnv([])
 
+    def test_step_too_few_actions_raises(self):
+        import pytest
+
+        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
+        _, states = multi.reset(_RNG)
+        actions = [jnp.int32(0)]   # only 1, expected 2
+
+        with pytest.raises(ValueError, match="expected 2 states and actions"):
+            multi.step(states, actions)
+
+    def test_step_too_many_states_raises(self):
+        import pytest
+
+        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
+        _, states = multi.reset(_RNG)
+        actions = [jnp.int32(0), jnp.int32(0)]
+        states = states + [states[0]]   # 3 states, expected 2
+
+        with pytest.raises(ValueError, match="got 3 states and 2 actions"):
+            multi.step(states, actions)
+
     def test_compile_with_jit_wrapped_envs(self):
         from envrax.wrappers import JitWrapper
 
