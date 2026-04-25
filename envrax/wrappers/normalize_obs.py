@@ -3,13 +3,13 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, JaxEnv, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 from envrax.wrappers.utils import require_box
 
 
-class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT]):
+class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
     """
     Normalises pixel observations from `uint8 [0, 255]` to `float32 [0, 1]`.
 
@@ -22,7 +22,7 @@ class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT]):
         dtype `uint8`.
     """
 
-    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT]) -> None:
+    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env)
         require_box(env, type(self).__name__, dtype=jnp.uint8)
 

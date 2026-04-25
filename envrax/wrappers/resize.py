@@ -3,13 +3,13 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, JaxEnv, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 from envrax.wrappers.utils import require_box, resize
 
 
-class ResizeObservation(Wrapper[Box, ActSpaceT, StateT]):
+class ResizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
     """
     Resize observations to `(h, w)` using bilinear interpolation.
 
@@ -34,7 +34,7 @@ class ResizeObservation(Wrapper[Box, ActSpaceT, StateT]):
 
     def __init__(
         self,
-        env: JaxEnv[Box, ActSpaceT, StateT],
+        env: JaxEnv[Box, ActSpaceT, StateT, ConfigT],
         *,
         h: int = 84,
         w: int = 84,

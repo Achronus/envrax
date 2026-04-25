@@ -4,7 +4,7 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, EnvState, JaxEnv
+from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv
 from envrax.spaces import Box
 from envrax.wrappers.base import InnerStateT, StatefulWrapper
 from envrax.wrappers.utils import require_box
@@ -38,6 +38,7 @@ class FrameStackObservation(
         Box,
         ActSpaceT,
         FrameStackState[InnerStateT],
+        ConfigT,
         InnerStateT,
     ]
 ):
@@ -57,7 +58,7 @@ class FrameStackObservation(
 
     def __init__(
         self,
-        env: JaxEnv[Box, ActSpaceT, InnerStateT],
+        env: JaxEnv[Box, ActSpaceT, InnerStateT, ConfigT],
         *,
         n_stack: int = 4,
     ) -> None:

@@ -44,7 +44,7 @@ Envrax enforces a small, strict interface so that every environment, regardless 
 
 Every environment is built as a stateless Python object and environment states (`envrax.EnvState`) are defined as explicit `chex.dataclass` PyTrees passed to and returned from every call, making the full `reset → step` pipeline compatible with `jax.jit`, `jax.vmap`, and `jax.lax.scan` with zero modification.
 
-At a glance, all environments inherit from the `envrax.JaxEnv` base class and then implement their own `envrax.Spaces`, methods, `envrax.EnvState`, and (optionally) `envrax.EnvConfig`. By design, `JaxEnv` is generic over three type parameters: the observation space, the action space, and the state type (`JaxEnv[ObsSpaceT, ActSpaceT, StateT]`) to maximise IDE support.
+At a glance, all environments inherit from the `envrax.JaxEnv` base class and then implement their own `envrax.Spaces`, methods, `envrax.EnvState`, and `envrax.EnvConfig`. By design, `JaxEnv` is generic over four type parameters: the observation space, the action space, the state type, and the config type (`JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]`) to maximise IDE support.
 
 Here are the core components:
 
@@ -55,7 +55,7 @@ from envrax.spaces import Box, Discrete
 
 # Core inheritable items
 config = EnvConfig()        # static configuration
-env = MyEnv(config=config)  # E.g., MyEnv extends JaxEnv with JaxEnv[Box, Discrete, MyEnvState]
+env = MyEnv(config=config)  # E.g., MyEnv extends JaxEnv with JaxEnv[Box, Discrete, MyEnvState, EnvConfig]
 
 # Required inputs
 rng = jax.random.key(42)    # PRNG key (only for reset)
@@ -96,13 +96,13 @@ The `EnvConfig` acts as static configuration values that are declared once and n
 
 ### Generics and Type Safety
 
-Every `JaxEnv` subclass declares its concrete observation, action, and state types:
+Every `JaxEnv` subclass declares its concrete observation, action, state, and config types:
 
 ```python
-class BallEnv(JaxEnv[Box, Discrete, BallState]): ...
+class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]): ...
 ```
 
-This gives you full IDE autocomplete and static type-checking on `env.observation_space`, `env.action_space`, and the `state` returned by `reset`/`step`.
+This gives you full IDE autocomplete and static type-checking on `env.observation_space`, `env.action_space`, `env.config`, and the `state` returned by `reset`/`step`.
 
 ### Spaces
 

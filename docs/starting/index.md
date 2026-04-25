@@ -72,7 +72,7 @@ class BallState(EnvState):
     ball_y: jnp.float32
 
 
-class BallEnv(JaxEnv[Box, Discrete, BallState]):
+class BallEnv(JaxEnv[Box, Discrete, BallState, EnvConfig]):
     @property
     def observation_space(self) -> Box:
         return Box(low=0.0, high=1.0, shape=(2,), dtype=jnp.float32)

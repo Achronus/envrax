@@ -26,7 +26,7 @@ class _PixelState(EnvState):
     pass
 
 
-class _PixelEnv(JaxEnv[Box, Discrete, _PixelState]):
+class _PixelEnv(JaxEnv[Box, Discrete, _PixelState, EnvConfig]):
     """Minimal env returning uint8[4, 4, 3] RGB observations."""
 
     @property
@@ -339,7 +339,7 @@ class _RenderState(EnvState):
     pass
 
 
-class _RenderEnv(JaxEnv[Box, Discrete, _RenderState]):
+class _RenderEnv(JaxEnv[Box, Discrete, _RenderState, EnvConfig]):
     """Minimal env that implements render()."""
 
     @property

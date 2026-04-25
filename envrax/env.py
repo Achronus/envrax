@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, Tuple, TypeVar
+from typing import Any, Dict, Generic, Tuple, Type, TypeVar
 
 import chex
 import numpy as np
 
 from envrax.spaces import Space
+from envrax.utils import resolve_generic_arg
 
 ObsSpaceT = TypeVar("ObsSpaceT", bound=Space)
 ActSpaceT = TypeVar("ActSpaceT", bound=Space)
 StateT = TypeVar("StateT", bound="EnvState")
+ConfigT = TypeVar("ConfigT", bound="EnvConfig")
 
 
 @chex.dataclass
@@ -49,24 +51,30 @@ class EnvConfig:
     max_steps: int = 1000
 
 
-class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
+class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Base class for all JAX-native environments.
 
-    Generic over the observation space, action space, and state types so
-    that subclasses and wrappers get accurate type info without runtime
-    casts. Subclasses pin all three:
+    Generic over the observation space, action space, state, and config
+    types so that subclasses and wrappers get accurate type info without
+    runtime casts. Subclasses pin all four:
 
-        class BallEnv(JaxEnv[Box, Discrete, BallState]): ...
+        class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]): ...
 
     Parameters
     ----------
-    config : EnvConfig (optional)
-        Static environment configuration. Defaults to `EnvConfig()`.
+    config : ConfigT (optional)
+        Static environment configuration. Defaults to `ConfigT()`.
     """
 
-    def __init__(self, config: EnvConfig | None = None) -> None:
-        self.config = config if config is not None else EnvConfig()
+    config: ConfigT
+
+    def __init__(self, config: ConfigT | None = None) -> None:
+        if config is None:
+            config_cls = self._resolve_config_cls()
+            config = config_cls()
+
+        self.config = config  # type: ignore
 
     @property
     @abstractmethod
@@ -156,6 +164,18 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT]):
             f"{type(self).__name__} does not implement render(). "
             "Override render(state) to return a uint8 (H, W, 3) RGB frame."
         )
+
+    @classmethod
+    def _resolve_config_cls(cls) -> Type:
+        """
+        Return the concrete `EnvConfig` subclass pinned via `JaxEnv[..., ConfigT]`.
+
+        Returns
+        -------
+        config_cls : Type
+            The class pinned to `ConfigT` for this subclass
+        """
+        return resolve_generic_arg(cls, JaxEnv, position=3)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}"

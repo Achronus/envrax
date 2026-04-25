@@ -4,11 +4,11 @@ from typing import Any, Callable, Dict, List, Tuple
 import chex
 import numpy as np
 
-from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
+class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Save episode frames to MP4 based on configurable triggers.
 
@@ -56,7 +56,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
 
     def __init__(
         self,
-        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT],
+        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT],
         *,
         output_dir: str | Path = "runs/recordings",
         fps: int = 30,

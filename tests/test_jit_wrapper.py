@@ -22,7 +22,7 @@ class _VectorState(EnvState):
     pass
 
 
-class _VectorEnv(JaxEnv[Box, Discrete, _VectorState]):
+class _VectorEnv(JaxEnv[Box, Discrete, _VectorState, EnvConfig]):
     """Minimal env returning float32[4] observations."""
 
     @property

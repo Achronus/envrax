@@ -28,7 +28,7 @@ class _PixState(EnvState):
     pass
 
 
-class _PixEnv(JaxEnv[Box, Discrete, _PixState]):
+class _PixEnv(JaxEnv[Box, Discrete, _PixState, EnvConfig]):
     """Minimal env returning uint8[8, 8, 3] RGB observations."""
 
     @property

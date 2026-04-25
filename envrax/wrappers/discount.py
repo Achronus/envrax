@@ -3,11 +3,11 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class EpisodeDiscount(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
+class EpisodeDiscount(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Convert the boolean `done` signal to a float32 episode discount.
 
@@ -20,7 +20,7 @@ class EpisodeDiscount(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
         Inner environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT]) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env)
 
     def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:

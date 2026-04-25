@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, EnvState, JaxEnv, ObsSpaceT
+from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT
 from envrax.wrappers.base import InnerStateT, StatefulWrapper
 
 
@@ -36,6 +36,7 @@ class RecordEpisodeStatistics(
         ObsSpaceT,
         ActSpaceT,
         EpisodeStatisticsState[InnerStateT],
+        ConfigT,
         InnerStateT,
     ]
 ):
@@ -52,7 +53,7 @@ class RecordEpisodeStatistics(
         Environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT]) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT]) -> None:
         super().__init__(env)
 
     def reset(

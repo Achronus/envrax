@@ -16,7 +16,7 @@ class _VecState(EnvState):
     pass
 
 
-class _VecEnv(JaxEnv[Box, Discrete, _VecState]):
+class _VecEnv(JaxEnv[Box, Discrete, _VecState, EnvConfig]):
     """float32[4] observations."""
 
     @property
@@ -41,7 +41,7 @@ class _PixState(EnvState):
     pass
 
 
-class _PixEnv(JaxEnv[Box, Discrete, _PixState]):
+class _PixEnv(JaxEnv[Box, Discrete, _PixState, EnvConfig]):
     """uint8[4, 4, 3] observations."""
 
     @property

@@ -3,13 +3,13 @@ from typing import Any, Dict, Tuple
 import chex
 import jax.numpy as jnp
 
-from envrax.env import ActSpaceT, JaxEnv, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
 from envrax.wrappers.utils import require_box, to_gray
 
 
-class GrayscaleObservation(Wrapper[Box, ActSpaceT, StateT]):
+class GrayscaleObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
     """
     Convert RGB observations to grayscale using the NTSC luminance formula.
 
@@ -23,7 +23,7 @@ class GrayscaleObservation(Wrapper[Box, ActSpaceT, StateT]):
         of shape `(H, W, 3)` and dtype `uint8`.
     """
 
-    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT]) -> None:
+    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env)
         require_box(
             env,

@@ -4,7 +4,7 @@ from typing import Any, Dict, Generic, Self, Tuple, Type, TypeVar, overload
 import chex
 import numpy as np
 
-from envrax.env import ActSpaceT, EnvState, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT, StateT
 
 InnerStateT = TypeVar("InnerStateT", bound=EnvState)
 
@@ -47,14 +47,14 @@ class _WrapperFactory:
         return self._cls(env, **self._kwargs)
 
 
-class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT]):
+class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Abstract base class for pass-through JaxEnv wrappers.
 
     Pass-through wrappers preserve the inner env's state type unchanged.
-    They declare three TypeVars:
+    They declare four TypeVars:
 
-        class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT]): ...
+        class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]): ...
 
     For wrappers that introduce their own outer state type wrapping the
     inner state, use `StatefulWrapper` instead.
@@ -86,9 +86,9 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT]):
             return factory
         return super().__new__(cls)
 
-    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT]) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env.config)
-        self._env: JaxEnv[ObsSpaceT, ActSpaceT, StateT] = env
+        self._env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT] = env
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}<{self._env!r}>"
@@ -128,18 +128,18 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT]):
 
 
 class StatefulWrapper(
-    Wrapper[ObsSpaceT, ActSpaceT, StateT],
-    Generic[ObsSpaceT, ActSpaceT, StateT, InnerStateT],
+    Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT],
+    Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT, InnerStateT],
 ):
     """
     Abstract base class for stateful JaxEnv wrappers.
 
     Stateful wrappers introduce their own outer state type that wraps the
-    inner env's state. They declare four TypeVars — pinning `StateT` to
+    inner env's state. They declare five TypeVars — pinning `StateT` to
     their wrapper-specific class and leaving `InnerStateT` parametric:
 
         class FrameStackObservation(
-            StatefulWrapper[Box, ActSpaceT, FrameStackState[InnerStateT], InnerStateT]
+            StatefulWrapper[Box, ActSpaceT, FrameStackState[InnerStateT], ConfigT, InnerStateT]
         ): ...
 
     For wrappers that preserve the inner state unchanged, use `Wrapper`
@@ -151,9 +151,9 @@ class StatefulWrapper(
         Inner environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT]) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT]) -> None:
         JaxEnv.__init__(self, env.config)
-        self._env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT] = env  # type: ignore[assignment]
+        self._env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT] = env  # type: ignore[assignment]
 
 
 type WrapperType = Type[Wrapper] | _WrapperFactory

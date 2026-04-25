@@ -5,11 +5,11 @@ import chex
 import jax
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
-from envrax.env import ActSpaceT, JaxEnv, ObsSpaceT, StateT
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
 
 
-class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
+class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Wrap a `JaxEnv` so that `reset` and `step` are compiled with
     `jax.jit` on construction.
@@ -29,7 +29,7 @@ class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT]):
 
     def __init__(
         self,
-        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT],
+        env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT],
         cache_dir: pathlib.Path | str | None = DEFAULT_CACHE_DIR,
         *,
         pre_warm: bool = True,

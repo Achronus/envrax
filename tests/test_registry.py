@@ -28,7 +28,7 @@ class _DummyState(EnvState):
     pass
 
 
-class _DummyEnv(JaxEnv[Box, Discrete, _DummyState]):
+class _DummyEnv(JaxEnv[Box, Discrete, _DummyState, EnvConfig]):
     @property
     def observation_space(self) -> Box:
         return Box(low=0, high=1, shape=(4,), dtype=jnp.float32)
