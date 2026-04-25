@@ -155,7 +155,7 @@ One half of the split (`rng`) goes back on the state for the next call, while th
 
     :exclamation: **Always** split your keys before consuming them! :exclamation:
 
-We'll explore this in more detail when we put this into a real `step` method in the ["Your First Environment"](first-environment.md) tutorial. For now, just remember the split-then-consume pattern.
+We'll explore this in more detail when we put this into a real `step` method in the ["Your First Environment"](first-env.md) tutorial. For now, just remember the split-then-consume pattern.
 
 ## Nested States
 

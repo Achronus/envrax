@@ -54,7 +54,7 @@ class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
     ...
 ```
 
-We'll discuss this in more detail in the next tutorial ([Your First Environment](first-environment.md)).
+We'll discuss this in more detail in the next tutorial ([Your First Environment](first-env.md)).
 
 ## Recap
 
@@ -76,6 +76,6 @@ You've now seen all three foundational pieces — state, spaces, and config. Tim
 
     Subclass `JaxEnv`, implement `reset` and `step`, and use `BallConfig` to drive the dynamics.
 
-    [:octicons-arrow-right-24: Continue to Tutorial 4](first-environment.md)
+    [:octicons-arrow-right-24: Continue to Tutorial 4](first-env.md)
 
 </div>

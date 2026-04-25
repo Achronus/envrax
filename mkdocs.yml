@@ -61,7 +61,7 @@ nav:
           - State: tutorials/essentials/state.md
           - Spaces: tutorials/essentials/spaces.md
           - Environment Configuration: tutorials/essentials/configuration.md
-          - Your First Environment: tutorials/essentials/first-environment.md
+          - Your First Environment: tutorials/essentials/first-env.md
           - Vectorising: tutorials/essentials/vectorising.md
           - Multiple Environments: tutorials/essentials/multi-env.md
           - Environment Registry: tutorials/essentials/registry.md
