@@ -24,6 +24,10 @@ If we know the state of the environment, we can then compute the next state give
 
 ## The Base State
 
+???+ api "API Docs"
+
+    [`envrax.env.EnvState`](../../api/env/base.md#envrax.env.EnvState)
+
 By design, Envrax represents state as a [`@chex.dataclass` [:material-arrow-right-bottom:]](https://chex.readthedocs.io/en/latest/api.html#dataclasses) which are _immutable_ Python objects that JAX treats as a ["PyTree" [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/pytrees.html). This allows us to work with the JAX package without any issues and enables `jax.vmap` with over 1000s of environments at once.
 
 ??? note "But really, why `@chex.dataclass`?"

@@ -103,6 +103,9 @@ extra:
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/envrax
 
+extra_css:
+  - assets/css/icons.css
+
 markdown_extensions:
   - attr_list
   - admonition

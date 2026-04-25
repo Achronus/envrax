@@ -23,6 +23,10 @@ For three reasons:
 
 ## Built-In Spaces
 
+???+ api "API Docs"
+
+    [`envrax.spaces.Space`](../../api/spaces.md#envrax.spaces.Space)
+
 Envrax ships with three space types: `Discrete`, `Box` and `MultiDiscrete`.
 
 All of them implement three methods from the `Space` contract:
@@ -32,6 +36,10 @@ All of them implement three methods from the `Space` contract:
 - **`batch(n)`** — return a batched version of the space with a leading dimension `n`.
 
 ### Discrete
+
+???+ api "API Docs"
+
+    [`envrax.spaces.Discrete`](../../api/spaces.md#envrax.spaces.Discrete)
 
 `Discrete` spaces are one of the simplest available and are commonly used for deterministic problem sets.
 
@@ -60,6 +68,10 @@ space.batch(8)                             # MultiDiscrete(nvec=(4,)*8, dtype=jn
 Because `n` is a static Python `int`, you can use it directly in shape declarations or `jnp.arange(space.n)` without issues.
 
 ### Box
+
+???+ api "API Docs"
+
+    [`envrax.spaces.Box`](../../api/spaces.md#envrax.spaces.Box)
 
 `Box` spaces are another common type that are often used for continuous-valued observations or actions with per-dimension bounds.
 
@@ -91,6 +103,10 @@ Box(low=0, high=255, shape=(84, 84, 3), dtype=jnp.uint8)
 ```
 
 ### MultiDiscrete
+
+???+ api "API Docs"
+
+    [`envrax.spaces.MultiDiscrete`](../../api/spaces.md#envrax.spaces.MultiDiscrete)
 
 `MultiDiscrete` is less common than the others and is used when an action is a _vector_ of independent discrete choices, E.g., a game pad with a directional stick (4 options) and two buttons (with 2 options each):
 

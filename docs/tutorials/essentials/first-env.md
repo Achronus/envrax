@@ -1,5 +1,9 @@
 # Your First Environment
 
+???+ api "API Docs"
+
+    [`envrax.env.JaxEnv`](../../api/env/base.md#envrax.env.JaxEnv)
+
 Welcome back! So far, you've developed your understanding of the three foundational pieces for building Envrax environments:
 
 - [State](state.md) — the immutable snapshot of your environment

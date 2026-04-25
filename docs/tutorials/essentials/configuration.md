@@ -29,6 +29,10 @@ As a rule of thumb:
 
 ## Extending `EnvConfig`
 
+???+ api "API Docs"
+
+    [`envrax.env.EnvConfig`](../../api/env/base.md#envrax.env.EnvConfig)
+
 Now let's look at how we can extend `EnvConfig`. Just like `EnvState`, we use the `@chex.dataclass` decorator and subclass from the parent class (`EnvConfig`). Then, just add the fields we want:
 
 ```python
