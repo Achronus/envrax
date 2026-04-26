@@ -483,7 +483,7 @@ For production setups, the [`make()`](make.md) factory method is useful for doin
 ```python
 import envrax
 
-env, config = envrax.make(
+env = envrax.make(
     "BallEnv-v0",
     wrappers=[NormalizeObservation, ClipReward],
 )

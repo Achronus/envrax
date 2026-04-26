@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 from envrax._compile import DEFAULT_CACHE_DIR
 from envrax.env import EnvConfig, JaxEnv
@@ -19,7 +19,7 @@ def make(
     jit_compile: bool = True,
     pre_warm: bool = True,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
-) -> Tuple[JaxEnv, EnvConfig]:
+) -> JaxEnv:
     """
     Create a single `JaxEnv`, optionally with wrappers applied.
 
@@ -46,9 +46,6 @@ def make(
     -------
     env : JaxEnv
         Configured environment, wrapped in `JitWrapper` when `jit_compile=True`.
-    config : EnvConfig
-        Environment configuration used by the environment (also accessible
-        via `env.config`).
 
     Raises
     ------
@@ -70,7 +67,7 @@ def make(
     if jit_compile:
         env = JitWrapper(env, cache_dir=cache_dir, pre_warm=pre_warm)
 
-    return env, resolved_config
+    return env
 
 
 def make_vec(
@@ -82,7 +79,7 @@ def make_vec(
     jit_compile: bool = True,
     pre_warm: bool = True,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
-) -> Tuple[VecEnv, EnvConfig]:
+) -> VecEnv:
     """
     Create a `VecEnv` with `n_envs` parallel environments.
 
@@ -108,12 +105,9 @@ def make_vec(
     Returns
     -------
     vec_env : VecEnv
-        Vectorised environment
-    config : EnvConfig
-        Environment configuration used by the environment (also accessible
-        via `vec_env.config`).
+        Vectorised environment.
     """
-    inner_env, resolved_config = make(
+    inner_env = make(
         name,
         config=config,
         wrappers=wrappers,
@@ -126,13 +120,12 @@ def make_vec(
     if jit_compile and pre_warm:
         vec_env.compile(cache_dir=cache_dir)
 
-    return vec_env, resolved_config
+    return vec_env
 
 
 def make_multi(
     names: List[str],
     *,
-    config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     pre_warm: bool = False,
@@ -140,6 +133,10 @@ def make_multi(
 ) -> MultiEnv:
     """
     Create a `MultiEnv` managing M heterogeneous environments.
+
+    Each environment is constructed with its registered default config. For per-environment
+    config overrides, register the variants ahead of time or compose
+    manually with `MultiEnv([make(name, config=...), ...])`.
 
     By default, `pre_warm=False` so environments are JIT-wrapped but not
     compiled immediately. Call `multi_env.compile()` to trigger compilation
@@ -149,15 +146,13 @@ def make_multi(
     ----------
     names : List[str]
         Registered environment names
-    config : EnvConfig (optional)
-        Environment configuration applied to all envs.
-        Defaults to each env's registered default.
     wrappers : List[WrapperType] (optional)
-        Wrapper pipeline applied to each env
+        Wrapper pipeline applied to every environment. Must be compatible with the
+        observation and action spaces of every environment used.
     jit_compile : bool (optional)
-        Wrap each env in `JitWrapper`. Default is `True`.
+        Wrap each environment in `JitWrapper`. Default is `True`.
     pre_warm : bool (optional)
-        When `jit_compile=True`, compile each env immediately on creation.
+        When `jit_compile=True`, compile each environment immediately on creation.
         Default is `False` — call `multi_env.compile()` later instead.
     cache_dir : Path | str | None (optional)
         Directory for the persistent XLA compilation cache
@@ -169,9 +164,8 @@ def make_multi(
     """
     envs = []
     for name in names:
-        env, _ = make(
+        env = make(
             name,
-            config=config,
             wrappers=wrappers,
             jit_compile=jit_compile,
             pre_warm=pre_warm,
@@ -186,7 +180,6 @@ def make_multi_vec(
     names: List[str],
     n_envs: int,
     *,
-    config: EnvConfig | None = None,
     wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     pre_warm: bool = False,
@@ -194,6 +187,10 @@ def make_multi_vec(
 ) -> MultiVecEnv:
     """
     Create a `MultiVecEnv` managing M heterogeneous vectorised environments.
+
+    Each environment is constructed with its registered default config. For per-environment
+    config overrides, register the variants ahead of time or compose
+    manually with `MultiVecEnv([VecEnv(make(name, config=...), n), ...])`.
 
     By default, `pre_warm=False` so VecEnv instances are created but not
     compiled immediately. Call `multi_vec_env.compile()` to trigger
@@ -204,12 +201,11 @@ def make_multi_vec(
     names : List[str]
         Registered environment names
     n_envs : int
-        Number of parallel copies per env
-    config : EnvConfig (optional)
-        Environment configuration applied to all envs.
-        Defaults to each env's registered default.
+        Number of parallel copies per environment
     wrappers : List[WrapperType] (optional)
-        Wrapper pipeline applied to each inner env before vectorisation
+        Wrapper pipeline applied to every inner environment before vectorisation.
+        Must be compatible with the observation and action spaces of every
+        environment used.
     jit_compile : bool (optional)
         Enable the XLA compilation cache. Default is `True`.
     pre_warm : bool (optional)
@@ -225,9 +221,8 @@ def make_multi_vec(
     """
     vec_envs = []
     for name in names:
-        inner, _ = make(
+        inner = make(
             name,
-            config=config,
             wrappers=wrappers,
             jit_compile=False,
             cache_dir=None,

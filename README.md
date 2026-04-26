@@ -152,7 +152,7 @@ from envrax.wrappers import (
 )
 
 # Mix of plain classes and pre-configured wrappers — no `partial` needed
-env, config = envrax.make(
+env = envrax.make(
     "BallEnv-v0",
     wrappers=[
         GrayscaleObservation,
@@ -194,7 +194,7 @@ import envrax
 from envrax import EnvConfig
 
 envrax.register("MyEnv-v0", MyEnv, EnvConfig(), suite="my-pkg")
-env, config = envrax.make("MyEnv-v0")
+env = envrax.make("MyEnv-v0")
 ```
 
 #### Bulk Registration via a Suite
@@ -230,7 +230,7 @@ class DemoSuite(EnvSuite):
 register_suite(DemoSuite())
 
 # Now usable from anywhere via the standard registry
-env, config = envrax.make("demo/cartpole-v0")
+env = envrax.make("demo/cartpole-v0")
 ```
 
 ## Quick Start
@@ -388,19 +388,19 @@ from envrax import EnvConfig
 envrax.register("BallEnv-v0", BallEnv, EnvConfig(max_steps=500))
 
 # JIT-compiled by default; warm-up step runs at construction time
-env, config = envrax.make("BallEnv-v0")
+env = envrax.make("BallEnv-v0")
 obs, state = env.reset(jax.random.key(0))
 
 # Apply wrappers (innermost-first)
 from envrax.wrappers import NormalizeObservation, ClipReward
-env, config = envrax.make(
+env = envrax.make(
     "BallEnv-v0",
     wrappers=[NormalizeObservation, ClipReward],
     jit_compile=False,
 )
 
 # Vectorised environments
-vec_env, config = envrax.make_vec("BallEnv-v0", n_envs=64)
+vec_env = envrax.make_vec("BallEnv-v0", n_envs=64)
 obs, states = vec_env.reset(jax.random.key(0))         # obs: [64, ...]
 
 # Multiple unique environments at once (pre_warm=False by default)
@@ -471,10 +471,10 @@ vec_env.compile()  # warm up the vmapped reset + step
 
 | Symbol | Description |
 | --- | --- |
-| `make(name, *, config, wrappers, jit_compile, pre_warm, cache_dir)` | Create a single env with optional wrappers and JIT. Returns `(JaxEnv, EnvConfig)`. |
-| `make_vec(name, n_envs, ...)` | Create a `VecEnv` of `n_envs` parallel environments. Returns `(VecEnv, EnvConfig)`. |
-| `make_multi(names, ...)` | Create a `MultiEnv` managing `M` heterogeneous environments. `pre_warm` defaults to `False`. |
-| `make_multi_vec(names, n_envs, ...)` | Create a `MultiVecEnv` managing `M` heterogeneous vectorised environments. `pre_warm` defaults to `False`. |
+| `make(name, *, config, wrappers, jit_compile, pre_warm, cache_dir)` | Create a single env with optional wrappers and JIT. Returns a `JaxEnv`. |
+| `make_vec(name, n_envs, *, config, wrappers, ...)` | Create a `VecEnv` of `n_envs` parallel environments. |
+| `make_multi(names, *, wrappers, ...)` | Create a `MultiEnv` managing `M` heterogeneous environments using each env's registered default config. `pre_warm` defaults to `False`. |
+| `make_multi_vec(names, n_envs, *, wrappers, ...)` | Create a `MultiVecEnv` managing `M` heterogeneous vectorised environments using each env's registered default config. `pre_warm` defaults to `False`. |
 
 ### Multi-Env Managers (`envrax.multi_env`, `envra.multi_vec_env`)
 

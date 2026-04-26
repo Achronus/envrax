@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import pytest
 
 from envrax.env import EnvConfig, EnvState, JaxEnv
+from envrax.error import MissingPackageError
 from envrax.make import make
 from envrax.registry import (
     _REGISTRY,
@@ -60,16 +61,16 @@ class TestRegistry:
 
     def test_register_and_make(self):
         register("DummyEnv-v0", _DummyEnv, EnvConfig())
-        env, config = make("DummyEnv-v0", jit_compile=False)
+        env = make("DummyEnv-v0", jit_compile=False)
         assert isinstance(env, _DummyEnv)
-        assert config.max_steps == 1000
+        assert env.config.max_steps == 1000
 
     def test_make_with_custom_config(self):
         register("DummyEnv-v0", _DummyEnv, EnvConfig())
-        env, config = make(
+        env = make(
             "DummyEnv-v0", config=EnvConfig(max_steps=500), jit_compile=False
         )
-        assert config.max_steps == 500
+        assert env.config.max_steps == 500
 
     def test_make_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown environment"):
@@ -82,7 +83,7 @@ class TestRegistry:
 
     def test_env_reset_step(self):
         register("DummyEnv-v0", _DummyEnv, EnvConfig())
-        env, _ = make("DummyEnv-v0", jit_compile=False)
+        env = make("DummyEnv-v0", jit_compile=False)
         rng = jax.random.key(0)
         obs, state = env.reset(rng)
         assert obs.shape == (4,)
@@ -230,9 +231,9 @@ class TestRegisterSuite:
 
     def test_make_after_register_suite(self):
         register_suite(_DummySuite())
-        env, config = make("dummy/alpha-v0", jit_compile=False)
+        env = make("dummy/alpha-v0", jit_compile=False)
         assert isinstance(env, _DummyEnv)
-        assert config.max_steps == 100
+        assert env.config.max_steps == 100
 
     def test_version_override(self):
         register_suite(_DummySuite(), version="v1")
