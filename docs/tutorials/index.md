@@ -56,5 +56,3 @@ Each tutorial is a task-focused guide for specific features. These can be read i
 | 2 | [Creating a Custom Wrapper](advanced/custom-wrapper.md) | Build your own pass-through and stateful wrapper |
 | 3 | [Creating a Custom Space](advanced/custom-spaces.md) | Subclass `Space` to support data shapes Envrax doesn't ship — simplex, one-hot, bitstring, etc. |
 | 4 | [Debugging JIT'd Environments](advanced/debugging.md) | Trace-aware logging, in-JIT assertions, and the `info`-channel pattern for observing what your env actually does |
-| 5 | [Testing your Environment](advanced/testing.md) | Verify JIT, `jax.vmap`, and determinism |
-| 6 | [Training an Agent](advanced/training.md) | Plug your environment into a JAX-native RL library like [PureJaxRL [:material-arrow-right-bottom:]](https://github.com/luchris429/purejaxrl) |
