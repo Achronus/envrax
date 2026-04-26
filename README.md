@@ -124,7 +124,7 @@ Envrax ports several of Gymnasium's most useful wrappers to the JAX-native inter
 
 | Wrapper | Kind | Input obs | Output obs | Description |
 | --- | --- | --- | --- | --- |
-| `JitWrapper` | pass-through | any env | same obs | Compiles `reset` + `step` with `jax.jit`; caches kernels to disk. Compatible with `JaxEnv` and `VecEnv` instances. |
+| `JitWrapper` | pass-through | any env | same obs | Compiles `reset` + `step` with `jax.jit`; caches kernels to disk |
 | `GrayscaleObservation` | pass-through | `uint8[H, W, 3]` | `uint8[H, W]` | NTSC luminance conversion |
 | `ResizeObservation(h, w)` | pass-through | `uint8[H, W]` or `uint8[H, W, C]` | `uint8[h, w]` or `uint8[h, w, C]` | Bilinear resize (default 84×84) |
 | `NormalizeObservation` | pass-through | `uint8[...]` | `float32[...]` in `[0, 1]` | Divide by 255 |
@@ -143,7 +143,7 @@ Wrappers come in two flavours:
 Wrappers can be applied either as a list of class instances (no `functools.partial` needed) or composed manually. Envrax handles the rest automatically.
 
 ```python
-from envrax import make
+import envrax
 from envrax.wrappers import (
     ClipReward,
     FrameStackObservation,
@@ -152,7 +152,7 @@ from envrax.wrappers import (
 )
 
 # Mix of plain classes and pre-configured wrappers — no `partial` needed
-env, config = make(
+env, config = envrax.make(
     "BallEnv-v0",
     wrappers=[
         GrayscaleObservation,
@@ -244,17 +244,23 @@ import chex
 import jax
 import jax.numpy as jnp
 
-from envrax import JaxEnv, EnvState
+from envrax import JaxEnv, EnvState, EnvConfig
 from envrax.spaces import Box, Discrete
 
 
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: jnp.float32
-    ball_y: jnp.float32
+    ball_x: chex.Array
+    ball_y: chex.Array
 
 
-class BallEnv(JaxEnv[Box, Discrete, BallState]):
+@chex.dataclass
+class BallConfig(EnvConfig):
+    friction: float = 0.98
+    reward_scale: float = 1.0
+
+
+class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
     @property
     def observation_space(self) -> Box:
         return Box(low=0.0, high=1.0, shape=(2,), dtype=jnp.float32)
@@ -278,11 +284,36 @@ class BallEnv(JaxEnv[Box, Discrete, BallState]):
 
     def step(self, state: BallState, action: chex.Array):
         rng, _ = jax.random.split(state.rng)
-        new_state = state.replace(rng=rng, step=state.step + 1)
+
+        # Use action to get new obs
+        # action: 0=left, 1=right, 2=up, 3=down
+        dx = jnp.array([-0.01, 0.01, 0.0, 0.0])[action] * self.config.friction
+        dy = jnp.array([0.0, 0.0, -0.01, 0.01])[action] * self.config.friction
+
+        # Get bounds
+        low, high = self.observation_space.low, self.observation_space.high
+
+        # Increment obs
+        new_x = jnp.clip(state.ball_x + dx, low, high)
+        new_y = jnp.clip(state.ball_y + dy, low, high)
+
+        # Update new state
+        new_state = state.replace(
+            rng=rng,
+            step=state.step + 1,
+            ball_x=new_x,
+            ball_y=new_y,
+        )
+
+        # Set new obs
         obs = jnp.array([new_state.ball_x, new_state.ball_y])
-        reward = jnp.float32(1.0)
+
+        # Compute reward, done, and info
+        reward = jnp.float32(1.0) * self.config.reward_scale
         done = new_state.step >= self.config.max_steps
-        return obs, new_state.replace(done=done), reward, done, {}
+        info = {"current_step": new_state.step}
+
+        return obs, new_state.replace(done=done), reward, done, info
 ```
 
 This code should work "as is".
@@ -296,7 +327,8 @@ import jax
 import jax.numpy as jnp
 from envrax import VecEnv, EnvConfig
 
-vec_env = VecEnv(BallEnv(config=EnvConfig(max_steps=1000)), num_envs=512)
+env = BallEnv()
+vec_env = VecEnv(env, num_envs=512)
 obs, states = vec_env.reset(jax.random.key(42))   # obs: float32[512, 2]
 
 actions = jnp.zeros(512, dtype=jnp.int32)
@@ -374,6 +406,32 @@ obs, states = vec_env.reset(jax.random.key(0))         # obs: [64, ...]
 # Multiple unique environments at once (pre_warm=False by default)
 multi = envrax.make_multi(["BallEnv-v0", "ExtraEnv-v0"])
 multi.compile()  # separate setup phase
+```
+
+### Training Loop
+
+Same simple training loop as [Gymnasium](https://gymnasium.farama.org/) but JAXified!
+
+```python
+import envrax
+import jax
+
+# Init the environment
+env = envrax.make("BallEnv-v0")
+
+# Set it's initial state
+key = jax.random.key(42)
+obs, state = env.reset(key)
+
+# Iterate through 1000 timesteps
+for _ in range(1000):
+    action = env.action_space.sample(key)
+    obs, state, reward, done, info = env.step(state, action)
+
+    # If episode has ended, reset to start a new one
+    if done:
+        new_key, key = jax.random.split(key)
+        obs, info = env.reset(new_key)
 ```
 
 ### `JitWrapper` — manual JIT control

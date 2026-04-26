@@ -67,8 +67,8 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
 
     @chex.dataclass
     class BallState(EnvState):
-        ball_x: jnp.float32
-        ball_y: jnp.float32
+        ball_x: chex.Array
+        ball_y: chex.Array
 
 
     @chex.dataclass

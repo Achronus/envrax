@@ -69,8 +69,8 @@ from envrax import EnvState
 
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: jnp.float32
-    ball_y: jnp.float32
+    ball_x: chex.Array
+    ball_y: chex.Array
 ```
 
 Notice how we don't use the Python `float` type here. There's a reason for that and we'll explain that shortly.
