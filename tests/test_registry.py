@@ -189,6 +189,43 @@ class TestEnvSuite:
         single = suite[1]
         assert single.envs == ["beta"]
 
+    def test_default_get_name_uses_prefix_format(self):
+        # Bare EnvSuite (no override) — exercises the base class default
+        suite = EnvSuite(
+            prefix="bare",
+            category="Bare",
+            version="v0",
+            specs=[EnvSpec("alpha", _DummyEnv, EnvConfig())],
+        )
+        assert suite.get_name("alpha") == "bare/alpha-v0"
+        assert suite.get_name("alpha", version="v2") == "bare/alpha-v2"
+
+    def test_check_returns_per_package_status(self):
+        suite = EnvSuite(
+            prefix="x",
+            category="X",
+            required_packages=["jax", "definitely_not_a_real_package_xyz"],
+        )
+        status = suite.check()
+        assert status["jax"] is True
+        assert status["definitely_not_a_real_package_xyz"] is False
+
+    def test_is_available_true_when_no_packages(self):
+        suite = EnvSuite(prefix="x", category="X", required_packages=[])
+        assert suite.is_available() is True
+
+    def test_is_available_true_when_all_installed(self):
+        suite = EnvSuite(prefix="x", category="X", required_packages=["jax"])
+        assert suite.is_available() is True
+
+    def test_is_available_false_when_any_missing(self):
+        suite = EnvSuite(
+            prefix="x",
+            category="X",
+            required_packages=["jax", "definitely_not_a_real_package_xyz"],
+        )
+        assert suite.is_available() is False
+
 
 class TestRegisterSuite:
     def setup_method(self):
@@ -291,3 +328,56 @@ class TestEnvSet:
         combined = s1 + s2
         assert combined.n_envs == 4
         assert len(combined.suites) == 2
+
+    def test_iter_yields_canonical_names_across_suites(self):
+        s = EnvSet(_DummySuite(), _DummySuite())
+        assert list(s) == [
+            "dummy/alpha-v0",
+            "dummy/beta-v0",
+            "dummy/alpha-v0",
+            "dummy/beta-v0",
+        ]
+
+    def test_repr_includes_suite_classes_and_total(self):
+        s = EnvSet(_DummySuite(), _DummySuite())
+        r = repr(s)
+        assert "EnvSet" in r
+        assert "_DummySuite" in r
+        assert "total=4" in r
+
+    def test_verify_packages_passes_when_all_installed(self):
+        s = EnvSet(
+            EnvSuite(prefix="a", category="A", required_packages=["jax"]),
+            EnvSuite(prefix="b", category="B", required_packages=[]),
+        )
+        s.verify_packages()  # should not raise
+
+    def test_verify_packages_raises_with_missing(self):
+        s = EnvSet(
+            EnvSuite(
+                prefix="a",
+                category="MissingSuite",
+                required_packages=["definitely_not_a_real_package_xyz"],
+            ),
+        )
+        with pytest.raises(MissingPackageError, match="MissingSuite"):
+            s.verify_packages()
+
+    def test_verify_packages_lists_each_missing_suite(self):
+        s = EnvSet(
+            EnvSuite(
+                prefix="a",
+                category="Alpha",
+                required_packages=["definitely_not_a_real_package_xyz"],
+            ),
+            EnvSuite(
+                prefix="b",
+                category="Beta",
+                required_packages=["jax"],  # installed — should not appear
+            ),
+        )
+        with pytest.raises(MissingPackageError) as exc_info:
+            s.verify_packages()
+        msg = str(exc_info.value)
+        assert "Alpha" in msg
+        assert "Beta" not in msg

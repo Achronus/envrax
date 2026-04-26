@@ -220,3 +220,40 @@ class TestMultiVecEnv:
         r = repr(multi)
         assert "MultiVecEnv" in r
         assert "total=12" in r
+
+    def test_len_equals_num_envs(self):
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),
+            VecEnv(_PixEnv(config=_CONFIG), _N_ENVS),
+        ])
+        assert len(multi) == 2
+
+    def test_observation_spaces_are_batched(self):
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), 4),
+            VecEnv(_PixEnv(config=_CONFIG), 8),
+        ])
+        spaces = multi.observation_spaces
+        assert len(spaces) == 2
+        assert spaces[0].shape == (4, 4)
+        assert spaces[1].shape == (8, 4, 4, 3)
+
+    def test_action_spaces_are_batched(self):
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), 4),
+            VecEnv(_PixEnv(config=_CONFIG), 8),
+        ])
+        spaces = multi.action_spaces
+        assert len(spaces) == 2
+        # Discrete batched into MultiDiscrete with one entry per parallel env
+        assert spaces[0].nvec == (2,) * 4
+        assert spaces[1].nvec == (3,) * 8
+
+    def test_single_action_spaces_are_unbatched(self):
+        multi = MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), 4),
+            VecEnv(_PixEnv(config=_CONFIG), 8),
+        ])
+        spaces = multi.single_action_spaces
+        assert spaces[0].n == 2
+        assert spaces[1].n == 3

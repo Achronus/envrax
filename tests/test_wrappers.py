@@ -129,6 +129,16 @@ class TestResizeObservation:
         env = ResizeObservation(GrayscaleObservation(_env()), h=8, w=8)
         assert env.observation_space.shape == (8, 8)
 
+    def test_obs_shape_preserves_rgb_channel(self):
+        # Skip grayscale — resize directly on uint8[H, W, 3]
+        env = ResizeObservation(_env(), h=8, w=8)
+        obs, _ = env.reset(_RNG)
+        assert obs.shape == (8, 8, 3)
+
+    def test_observation_space_preserves_rgb_channel(self):
+        env = ResizeObservation(_env(), h=8, w=8)
+        assert env.observation_space.shape == (8, 8, 3)
+
 
 class TestFrameStackObservation:
     def test_obs_shape(self):
@@ -144,6 +154,13 @@ class TestFrameStackObservation:
         obs2, _, _, _, _ = env.step(state, jnp.int32(0))
         assert obs2.shape == (4, 4, 4)
 
+    def test_observation_space_appends_stack_dim(self):
+        inner = ResizeObservation(GrayscaleObservation(_env()), h=4, w=4)
+        env = FrameStackObservation(inner, n_stack=4)
+        space = env.observation_space
+        assert isinstance(space, Box)
+        assert space.shape == (4, 4, 4)
+
 
 class TestNormalizeObservation:
     def test_obs_range(self):
@@ -155,6 +172,24 @@ class TestNormalizeObservation:
         env = NormalizeObservation(_env())
         obs, _ = env.reset(_RNG)
         assert obs.dtype == jnp.float32
+
+    def test_step_normalises_observation(self):
+        env = NormalizeObservation(_env())
+        _, state = env.reset(_RNG)
+        obs, _, reward, done, _ = env.step(state, jnp.int32(0))
+        assert obs.dtype == jnp.float32
+        assert jnp.all(obs >= 0.0) and jnp.all(obs <= 1.0)
+        # _PixelEnv.step returns 64 → 64/255 ≈ 0.251
+        assert jnp.allclose(obs, 64.0 / 255.0)
+
+    def test_observation_space_is_float_unit_box(self):
+        env = NormalizeObservation(_env())
+        space = env.observation_space
+        assert isinstance(space, Box)
+        assert space.shape == (4, 4, 3)
+        assert space.dtype == jnp.float32
+        assert space.low == 0.0
+        assert space.high == 1.0
 
 
 class TestRecordEpisodeStatistics:
@@ -484,3 +519,159 @@ class TestRecordVideo:
         _, state, _, _, _ = env.step(state, jnp.int32(0))
         # After done, recording resets
         assert env.recording is False
+
+
+# ---------------------------------------------------------------------------
+# require_box validation
+# ---------------------------------------------------------------------------
+
+
+class TestRequireBox:
+    """`require_box` is the validator image-processing wrappers use at construction."""
+
+    def test_non_box_observation_space_raises(self):
+        # GrayscaleObservation requires Box — wrap an env with Discrete obs space
+        import pytest
+
+        from envrax.wrappers.utils import require_box
+
+        @chex.dataclass
+        class _S(EnvState):
+            pass
+
+        class _DiscreteObsEnv(JaxEnv[Discrete, Discrete, _S, EnvConfig]):
+            @property
+            def observation_space(self) -> Discrete:
+                return Discrete(n=4)
+
+            @property
+            def action_space(self) -> Discrete:
+                return Discrete(n=2)
+
+            def reset(self, rng):
+                return jnp.int32(0), _S(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
+
+            def step(self, state, action):
+                return jnp.int32(0), state, jnp.float32(0.0), jnp.bool_(False), {}
+
+        with pytest.raises(TypeError, match="requires a Box observation space"):
+            require_box(_DiscreteObsEnv(), "TestWrapper")
+
+    def test_wrong_rank_raises(self):
+        import pytest
+
+        from envrax.wrappers.utils import require_box
+
+        # _PixelEnv is rank-3; require rank in (2,) → fails
+        with pytest.raises(ValueError, match="requires observation rank in"):
+            require_box(_env(), "TestWrapper", rank=2)
+
+    def test_wrong_last_dim_raises(self):
+        import pytest
+
+        from envrax.wrappers.utils import require_box
+
+        # _PixelEnv has last dim 3; require last_dim=1 → fails
+        with pytest.raises(ValueError, match="requires last dim = 1"):
+            require_box(_env(), "TestWrapper", last_dim=1)
+
+    def test_wrong_dtype_raises(self):
+        import pytest
+
+        from envrax.wrappers.utils import require_box
+
+        # _PixelEnv is uint8; require float32 → fails
+        with pytest.raises(ValueError, match="requires float32 dtype"):
+            require_box(_env(), "TestWrapper", dtype=jnp.float32)
+
+    def test_passes_with_matching_constraints(self):
+        from envrax.wrappers.utils import require_box
+
+        space = require_box(
+            _env(),
+            "TestWrapper",
+            rank=3,
+            last_dim=3,
+            dtype=jnp.uint8,
+        )
+        assert space.shape == (4, 4, 3)
+
+
+# ---------------------------------------------------------------------------
+# Wrapper factory mode (deferred construction)
+# ---------------------------------------------------------------------------
+
+
+class TestWrapperFactoryMode:
+    """Calling a parameterised wrapper without `env` returns a deferred factory."""
+
+    def test_deferred_factory_returns_wrapper_factory(self):
+        from envrax.wrappers.base import _WrapperFactory
+
+        factory = FrameStackObservation(n_stack=4)
+        assert isinstance(factory, _WrapperFactory)
+
+    def test_deferred_factory_constructs_wrapper_when_called(self):
+        inner = ResizeObservation(GrayscaleObservation(_env()), h=4, w=4)
+        factory = FrameStackObservation(n_stack=4)
+        wrapped = factory(inner)
+        assert isinstance(wrapped, FrameStackObservation)
+        obs, _ = wrapped.reset(_RNG)
+        assert obs.shape == (4, 4, 4)
+
+    def test_deferred_factory_preserves_kwargs(self):
+        inner = GrayscaleObservation(_env())
+        factory = ResizeObservation(h=16, w=16)
+        wrapped = factory(inner)
+        assert wrapped.observation_space.shape == (16, 16)
+
+
+# ---------------------------------------------------------------------------
+# Wrapper.render forwards through the chain
+# ---------------------------------------------------------------------------
+
+
+class TestWrapperRender:
+    def test_render_forwards_to_inner(self):
+        # _RenderEnv defines render(); ClipReward is a pass-through wrapper
+        env = ClipReward(_RenderEnv(config=_CONFIG))
+        _, state = env.reset(_RNG)
+        frame = env.render(state)
+        assert frame.shape == (2, 2, 3)
+        assert frame.dtype == jnp.uint8 or str(frame.dtype) == "uint8"
+
+    def test_render_forwards_through_wrapper_chain(self):
+        env = ExpandDims(ClipReward(_RenderEnv(config=_CONFIG)))
+        _, state = env.reset(_RNG)
+        frame = env.render(state)
+        assert frame.shape == (2, 2, 3)
+
+    def test_unwrapped_returns_innermost_env(self):
+        inner = _RenderEnv(config=_CONFIG)
+        env = ExpandDims(ClipReward(inner))
+        assert env.unwrapped is inner
+
+
+# ---------------------------------------------------------------------------
+# VecEnv.render and __repr__
+# ---------------------------------------------------------------------------
+
+
+class TestVecEnvRenderAndRepr:
+    def test_render_returns_single_frame_at_index(self):
+        vec = VecEnv(_RenderEnv(config=_CONFIG), num_envs=4)
+        _, states = vec.reset(_RNG)
+        frame = vec.render(states, index=2)
+        assert frame.shape == (2, 2, 3)
+
+    def test_render_default_index_zero(self):
+        vec = VecEnv(_RenderEnv(config=_CONFIG), num_envs=4)
+        _, states = vec.reset(_RNG)
+        frame = vec.render(states)
+        assert frame.shape == (2, 2, 3)
+
+    def test_repr_includes_inner_env_and_count(self):
+        vec = VecEnv(_env(), num_envs=8)
+        r = repr(vec)
+        assert "VecEnv" in r
+        assert "num_envs=8" in r

@@ -36,6 +36,7 @@ test = [
     "imageio>=2.37.3",
     "imageio-ffmpeg>=0.6.0",
     "pillow>=12.2.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [build-system]

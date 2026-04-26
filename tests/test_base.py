@@ -123,3 +123,11 @@ class TestJaxEnvConfigResolution:
 
         with pytest.raises(TypeError, match="does not pin a concrete type"):
             _Unpinned._resolve_config_cls()
+
+
+class TestJaxEnvRenderDefault:
+    def test_default_render_raises_not_implemented(self):
+        env = _BaseDummyEnv()
+        _, state = env.reset(_RNG)
+        with pytest.raises(NotImplementedError, match="does not implement render"):
+            env.render(state)
