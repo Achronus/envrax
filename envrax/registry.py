@@ -16,9 +16,7 @@ def register(
     """
     Register an environment class under a given name.
 
-    Called on package import by downstream suite packages to make their
-    environments available via `envrax.make()`. Builds an `EnvSpec`
-    internally and stores it in the registry.
+    Makes the environment available via `envrax.make()` methods.
 
     Parameters
     ----------
@@ -52,12 +50,7 @@ def register(
 
 def register_suite(suite: EnvSuite, *, version: str | None = None) -> None:
     """
-    Register every environment in an `EnvSuite` in one call.
-
-    Iterates `suite.specs` and stores each one in the registry under its
-    canonical ID, computed via `suite.get_name(spec.name, version)`. The
-    `suite.category` is propagated onto each registered spec for later
-    introspection.
+    Register every environment in an `EnvSuite` in one shot.
 
     Parameters
     ----------
@@ -92,9 +85,6 @@ def get_spec(name: str) -> EnvSpec:
     """
     Return the full `EnvSpec` for a registered environment.
 
-    Useful when callers need richer metadata than `make()` returns
-    (e.g. the `suite` tag for filtering envs by category).
-
     Parameters
     ----------
     name : str
@@ -118,5 +108,12 @@ def get_spec(name: str) -> EnvSpec:
 
 
 def registered_names() -> List[str]:
-    """Return a sorted list of all registered environment names."""
+    """
+    Get a sorted list of all registered environments.
+
+    Returns
+    -------
+    envs : List[str]
+        List of environment canonical IDs stored in the registry.
+    """
     return sorted(_REGISTRY.keys())

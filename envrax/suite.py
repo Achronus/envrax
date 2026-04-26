@@ -95,7 +95,7 @@ class EnvSuite:
         canonical : str
             Full environment ID (e.g. `"mjx/cartpole-v0"`).
         """
-        raise NotImplementedError("Subclasses must implement get_name")
+        return f"{self.prefix}/{name}-{version or self.version}"
 
     def all_names(self, version: str | None = None) -> List[str]:
         """
