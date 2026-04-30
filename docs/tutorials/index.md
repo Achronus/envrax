@@ -26,7 +26,7 @@ If any of that is unfamiliar, we highly recommend referring to the linked resour
 
     Start here! :point_down:
 
-Each tutorial is a short, self-contained tutorial that includes a runnable code snippet to help get you familiar with the basics.
+Each tutorial is a short, self-contained guide that includes a runnable code snippet to help get you familiar with the basics.
 
 We recommend completing the tutorials in order below to get the most out of this tutorial series.
 

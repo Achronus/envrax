@@ -2,7 +2,7 @@
 
 Welcome to your first Envrax tutorial! :wave:
 
-Before we build anything, we first need to understand two foundational concepts: the environments [state](#what-is-a-state) and environment [spaces](spaces.md). In this tutorial, we'll focus on its [state](#what-is-a-state).
+Before we build anything, we first need to understand two foundational concepts: the environment's [state](#what-is-a-state) and environment [spaces](spaces.md). In this tutorial, we'll focus on its [state](#what-is-a-state).
 
 ## What is a State?
 
@@ -11,7 +11,7 @@ In its simplest form, an environment state is a single snapshot of the current i
 This is distinct from two related concepts often used in the RL setting: `observations` and `dynamics`. Here's how:
 
 1. Observations - are a _subset_/_transformation_ of the state, limiting what the _agent_ gets to see each step.
-2. Dynamics - are the _rules_ of environment that compute the next state from the current one.
+2. Dynamics - are the _rules_ of the environment that compute the next state from the current one.
 
 For a ball moving in 2D, the environment state might contain:
 
@@ -28,7 +28,7 @@ If we know the state of the environment, we can then compute the next state give
 
     [`envrax.env.EnvState`](../../api/env/base.md#envrax.env.EnvState)
 
-By design, Envrax represents state as a [`@chex.dataclass` [:material-arrow-right-bottom:]](https://chex.readthedocs.io/en/latest/api.html#dataclasses) which are _immutable_ Python objects that JAX treats as a ["PyTree" [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/pytrees.html). This allows us to work with the JAX package without any issues and enables `jax.vmap` with over 1000s of environments at once.
+By design, Envrax represents state as a [`@chex.dataclass` [:material-arrow-right-bottom:]](https://chex.readthedocs.io/en/latest/api.html#dataclasses) — an _immutable_ Python object that JAX treats as a ["PyTree" [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/pytrees.html). This allows us to work with the JAX package without any issues and enables `jax.vmap` with thousands of environments at once.
 
 ??? note "But really, why `@chex.dataclass`?"
     As mentioned, it registers your class as a JAX PyTree, which gives you four things for free:
@@ -38,7 +38,7 @@ By design, Envrax represents state as a [`@chex.dataclass` [:material-arrow-righ
     3. **Batching** — `VecEnv` can stack `N` states into a single PyTree with a leading batch dimension
     4. **Testing helpers** — works out of the box with `chex`'s assertion utilities (`chex.assert_tree_all_close`, `chex.assert_shape`, etc.) for verifying state transitions in unit tests
 
-    Plain `@dataclass` won't work because they _are not_ PyTrees so JAX can't trace them!
+    Plain `@dataclass`es won't work because they _are not_ PyTrees so JAX can't trace them!
 
 Every Envrax state _must_ inherit from `envrax.EnvState`. By default, it provides three mandatory fields essential to all environments:
 
@@ -96,7 +96,7 @@ Fields on an `EnvState` subclass must be **JAX-compatible** and **traceable**. T
 
 **Traceable** values are really important for the flow of JAX JIT-compiled functions. They act as runtime data, allowing them to be changed during each function call without triggering a re-compile.
 
-JIT-compiling can take a lot of time depending on the size of the _computation graph_ so we really only want 1 "setup" compile at the start of using an environment to help us drastically reduce wall-clock speed.
+JIT-compiling can take a lot of time depending on the size of the _computation graph_ so we really only want 1 "setup" compile at the start of using an environment to help us drastically reduce wall-clock time.
 
 We cannot use Python types like `int`, `float` and `bool` because they are **static** values. Every time they change, they need to be re-traced and re-compiled. These are great for [`EnvConfig`](configuration.md) instead - more on them in a later tutorial!
 
@@ -116,7 +116,7 @@ class SnakeState(EnvState):
 
 ## Updating State
 
-Since PyTrees are mutable, we have to use the built `chex.dataclass` method `.replace(...)` whenever we want to make state adjustments.
+Since PyTrees are immutable, we have to use the built-in `chex.dataclass` method `.replace(...)` whenever we want to make state adjustments.
 
 This returns a new state with the requested fields changed and copies the other fields over automatically:
 
@@ -163,11 +163,11 @@ We'll explore this in more detail when we put this into a real `step` method in 
 
 ## Nested States
 
-Sometimes environment logic might need to _remember_ something between steps (E.g., a rolling buffer of frames or a running reward total). Rather than mutating the inner state, we can _wrap_ it in a larger state with its own extra fields.
+Sometimes environment logic might need to _remember_ something between steps (e.g., a rolling buffer of frames or a running reward total). Rather than mutating the inner state, we can _wrap_ it in a larger state with its own extra fields.
 
 The inner state stays untouched and we can still read its information whenever we need it.
 
-A common pattern for this is stacked `Wrappers`. If you apply a wrapper on top of an environment, the wrapper needs to be able to read the environments base fields (`rng`, `step`, `done`).
+A common pattern for this is stacked `Wrappers`. If you apply a wrapper on top of an environment, the wrapper needs to be able to read the environment's base fields (`rng`, `step`, `done`).
 
 The pattern is similar to what we've discussed previously that uses the `@chex.dataclass` decorator, but we now have an `env_state` field that provides us access to an "inner" `EnvState`:
 
@@ -184,7 +184,7 @@ For those curious, you can check it out in the [Creating a Custom Wrapper](../ad
 
 ## Common Pitfalls
 
-When building your custom `EnvState`'s there are a few common "gotcha's" to be mindful of:
+When building your custom `EnvState`s, there are a few common "gotchas" to be mindful of:
 
 - **`AttributeError: 'BallState' object has no attribute 'replace'`** — you forgot to add the `@chex.dataclass`.
 - **`TypeError: Argument ... is not a valid JAX type`** — a field is a Python object or `None` value. Convert it to a JAX array.
@@ -198,7 +198,7 @@ And that covers the basics of `EnvState`! Great job getting this far! :partying_
 To recap:
 
 - `EnvState` is a full snapshot of the environment at one timestep
-- - `EnvState` fields must be both **JAX-compatible** and **traceable** — use `jnp.*` types, not Python `int`/`float`/`bool`
+- `EnvState` fields must be both **JAX-compatible** and **traceable** — use `jnp.*` types, not Python `int`/`float`/`bool`
 - In Envrax, `EnvState` is **immutable** because JAX needs pure functions, so we `.replace(...)` rather than mutate
 - We extend `EnvState` with `@chex.dataclass` and JAX-compatible fields
 - We thread the PRNG key through the episode by splitting it each step

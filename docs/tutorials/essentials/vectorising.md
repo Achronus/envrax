@@ -6,9 +6,9 @@
 
 Excellent work building your first environment! If you wanted to, you could stop there and start using Envrax in your own projects right **now** for your own RL experiments, but a single environment is quite... inefficient.
 
-Think about it - a single `JaxEnv` runs one environment for one episode at a time. If you wanted to run over 1 million timesteps to train your policy, that's incredibly sample inefficient and could weeks to finish training.
+Think about it - a single `JaxEnv` runs one environment for one episode at a time. If you wanted to run over 1 million timesteps to train your policy, that's incredibly sample inefficient and could take weeks to finish training.
 
-What we really need, is a way to make multiple copies of it with randomization automatically built. Well, that's where `VecEnv` comes in! :wink:
+What we really need, is a way to make multiple copies of it with randomization automatically built in. Well, that's where `VecEnv` comes in! :wink:
 
 We can wrap the environment in `VecEnv` and it will operate on a *batch* of `N` independent environments simultaneously via `jax.vmap`.
 
@@ -108,7 +108,7 @@ The [`make_vec()`](make.md) factory method applies wrappers in this order automa
 
 ## Rendering
 
-`VecEnv` also comes with it's own `render()` method. This extracts one environment from the batch and calls it's own `render` method:
+`VecEnv` also comes with its own `render()` method. This extracts one environment from the batch and calls its own `render` method:
 
 ```python
 frame = vec_env.render(states, index=0)    # np.ndarray uint8 (H, W, 3)
@@ -118,7 +118,7 @@ This can be useful for logging an episode during training without unpacking the 
 
 ## Common Pitfalls
 
-Like `EnvState`, there are a few common "gotcha's" to be mindful of:
+Like `EnvState`, there are a few common "gotchas" to be mindful of:
 
 - **Mismatched action shape** — `actions` must have shape `(num_envs, ...)` with the same dtype as the action space. For a `Discrete` action, that's `jnp.int32[num_envs]`.
 - **`reset` with a single key** — `VecEnv.reset` takes one master key and splits it internally automatically. Don't pre-split your keys!

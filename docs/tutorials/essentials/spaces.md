@@ -18,7 +18,7 @@ Every environment **must** have the following:
 For three reasons:
 
 1. **Agents can easily shape their policy networks** - a policy needs to know the action space to build its output head, and the observation space to build its input layer.
-2. **We can easily expand environments using wrappers** - certain Envrax built-in wrappers like the `GrayscaleObservation` wrappers checks that its observation input is `uint8[H, W, 3]`. Without spaces, we'd have to add extra logic within our training loop.
+2. **We can easily expand environments using wrappers** - certain Envrax built-in wrappers like `GrayscaleObservation` check that the observation input is `uint8[H, W, 3]`. Without spaces, we'd have to add extra logic within our training loop.
 3. **You can catch bugs early** - if your env claims `Box(0, 1, (4,))` but actually returns shape `(3,)`, tests can verify the contract in seconds.
 
 ## Built-In Spaces
@@ -43,7 +43,7 @@ All of them implement three methods from the `Space` contract:
 
 `Discrete` spaces are one of the simplest available and are commonly used for deterministic problem sets.
 
-Here's some example use cases:
+Here are some example use cases:
 
 - Action space - agent moves with 4 movements: `[up, right, down, left]`
 - Observation space - environment is a 4x4 grid world of indices `[x, y]`
@@ -60,7 +60,7 @@ space.dtype            # jnp.int32 (default) - space data type
 space.n                # 4 - number of available actions
 
 # Methods
-action = space.sample(jax.random.key(0))   # E.g., int32(2)
+action = space.sample(jax.random.key(0))   # e.g., int32(2)
 space.contains(action)                     # True
 space.batch(8)                             # MultiDiscrete(nvec=(4,)*8, dtype=jnp.int32)
 ```
@@ -90,7 +90,7 @@ space.high    # 1.0 - Scalar upper bound applied to all elements
 space.shape   # (2,) - tuple describing a single element's shape
 
 # Methods
-action = space.sample(jax.random.key(0))   # E.g., jnp.float32((2,))
+action = space.sample(jax.random.key(0))   # e.g., jnp.float32((2,))
 space.contains(action)                     # True
 space.batch(8)                             # Box(low=0.0, high=1.0, shape=(8, 2), dtype=jnp.float32)
 ```
@@ -108,7 +108,7 @@ Box(low=0, high=255, shape=(84, 84, 3), dtype=jnp.uint8)
 
     [`envrax.spaces.MultiDiscrete`](../../api/spaces.md#envrax.spaces.MultiDiscrete)
 
-`MultiDiscrete` is less common than the others and is used when an action is a _vector_ of independent discrete choices, E.g., a game pad with a directional stick (4 options) and two buttons (with 2 options each):
+`MultiDiscrete` is less common than the others and is used when an action is a _vector_ of independent discrete choices, e.g., a game pad with a directional stick (4 options) and two buttons (with 2 options each):
 
 ```python
 from envrax.spaces import MultiDiscrete
@@ -118,10 +118,10 @@ space = MultiDiscrete(nvec=(4, 2, 2))
 # Properties
 space.dtype   # jnp.int32 (default) - space data type
 space.nvec    # (4, 2, 2) - tuple of action counts
-space.shape   # (3,) - tuple describing the spaces shape
+space.shape   # (3,) - tuple describing the space's shape
 
 # Methods
-action = space.sample(jax.random.key(0))   # E.g., int32[3] — one pick per sub-space
+action = space.sample(jax.random.key(0))   # e.g., int32[3] — one pick per sub-space
 space.contains(action)                     # True
 space.batch(2)                             # MultiDiscrete(nvec=(4, 2, 2, 4, 2, 2), dtype=jnp.int32)
 ```
@@ -138,7 +138,7 @@ A quick decision tree:
 | A continuous array (positions, velocities, pixels) | `Box` |
 | A _vector_ of independent categorical choices | `MultiDiscrete` |
 
-If none fit, you're probably modelling something more exotic (e.g. a `Tuple`, or `Dict`) that Envrax doesn't currently support. In this case, there are two options:
+If none fit, you're probably modelling something more exotic (e.g. a `Tuple` or `Dict`) that Envrax doesn't currently support. In this case, there are two options:
 
 1. Encode it as a flat `Box` or `MultiDiscrete` and decode it yourself inside your environment.
 2. Build your own by subclassing `Space` and implementing `sample`/`contains`/`batch`. You can learn more about this in the advanced tutorial - [Creating a Custom Space](../advanced/custom-spaces.md).

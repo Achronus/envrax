@@ -36,7 +36,7 @@ All environment logic follows a *stateless functional design* that builds on top
 
 ## Why Envrax?
 
-One of the downsides of RL research is sample efficiency. Often the environment becomes the main bottleneck for model training because they are restricted, and built, around CPU utilisation.
+One of the downsides of RL research is sample efficiency. Often the environment becomes the main bottleneck for model training because it's restricted, and built, around CPU utilisation.
 
 For example, the [Atari](https://ale.farama.org/) suite is CPU constrained and, from our experience, when we increase the number of environments running in parallel, a single training step drastically increases wall-clock time. Gradient computations on a GPU could take ~30 seconds but the sample retrieval takes over 2+ minutes (400% increase) because of the CPU bottleneck and that's with efficiency tricks!
 
@@ -60,7 +60,7 @@ Packages like [Brax](https://github.com/google/brax) and [Gymnax](https://github
 
     ---
 
-    Velora is licensed under the MIT License.
+    Envrax is licensed under the MIT License.
 
     [:octicons-arrow-right-24: License](license.md)
 

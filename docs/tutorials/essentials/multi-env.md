@@ -4,12 +4,12 @@ As we've seen, `VecEnv` gives you `N` parallel copies of a *single* environment 
 
 This is a very common strategy for meta-learning tasks, multi-task training, and when evaluating an agent on multiple environments.
 
-Envrax has built-in support for this via the `MultiEnv` and `MultiVecEnv` classes. Each give you `M` parallel copies of *different* env classes. These could be different environments or the same environment but with different observation shapes, action spaces, and configs. The sky's the limit! :smile:
+Envrax has built-in support for this via the `MultiEnv` and `MultiVecEnv` classes. Each gives you `M` parallel copies of *different* env classes. These could be different environments or the same environment but with different observation shapes, action spaces, and configs. The sky's the limit! :smile:
 
 As a rule of thumb, if you want:
 
 1. `N` parallel copies of one environment - use [`VecEnv`](vectorising.md)
-2. `M` different environments, once instance for each - use [`MultiEnv`](#multienv)
+2. `M` different environments, one instance for each - use [`MultiEnv`](#multienv)
 3. `M` different environments with `N` copies of each - use [`MultiVecEnv`](#multivecenv)
 
 ## `MultiEnv`
@@ -82,7 +82,7 @@ actions = [jnp.zeros(64, dtype=jnp.int32) for _ in range(multi_vec.num_envs)]
 obs_list, states, rewards, dones, infos = multi_vec.step(states, actions)
 ```
 
-This follow the same pattern as `MultiEnv` with a slight difference - each element of the returned lists is batched to `(n_envs, ...)` by its inner `VecEnv`.
+This follows the same pattern as `MultiEnv` with a slight difference - each element of the returned lists is batched to `(n_envs, ...)` by its inner `VecEnv`.
 
 ### `MultiVecEnv` Attributes
 
@@ -130,7 +130,7 @@ This is useful if you later want to stack observations for the repeated environm
 
 ## Common Pitfalls
 
-Using multiple environments at once can be tricky, be mindful of the following "gotcha's":
+Using multiple environments at once can be tricky, be mindful of the following "gotchas":
 
 - **Different action dtypes** - if `env[0]` takes `int32` and `env[1]` takes `float32`, build the actions list element by element; don't try to `jnp.stack` them.
 - **Forgetting `compile()`** - `MultiEnv` and `MultiVecEnv` don't pre-warm their inner environments. Without an explicit `multi.compile()`, your first `step` call will pay the compile cost for *every* env in the fleet sequentially.

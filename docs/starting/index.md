@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # Init the environment
     env = BallEnv()
 
-    # Set it's initial state
+    # Set its initial state
     key = jax.random.key(42)
     obs, state = env.reset(key)
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         # If episode has ended, reset to start a new one
         if done:
             new_key, key = jax.random.split(key)
-            obs, info = env.reset(new_key)
+            obs, state = env.reset(new_key)
 ```
 
 This code should work "as is".

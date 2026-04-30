@@ -24,4 +24,4 @@ The MIT License is favoured for its balance between freedom and protection, appe
 
 Here’s what this means for you:
 
-- __Freedom from vendor lock-in:__ Thanks to Open Source principles, you can use the Envrax without any strings attached. Customize or integrate it into your projects without worrying about restrictions. Your projects belong to you, and you are free to change the software at any time.
+- __Freedom from vendor lock-in:__ Thanks to Open Source principles, you can use Envrax without any strings attached. Customize or integrate it into your projects without worrying about restrictions. Your projects belong to you, and you are free to change the software at any time.

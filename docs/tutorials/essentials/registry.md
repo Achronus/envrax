@@ -8,7 +8,7 @@ We'll focus on how this works and how to use these methods effectively throughou
 
 ## Defining Environments
 
-Before we explore to the `register()` methods, we first need to understand how environments are defined within the registry.
+Before we explore the `register()` methods, we first need to understand how environments are defined within the registry.
 
 There are three main building blocks:
 
@@ -24,7 +24,7 @@ We'll build our understanding of these first!
 
     [`envrax.suite.EnvSpec`](../../api/registry/suite.md#envrax.suite.EnvSpec)
 
-`EnvSpec` is a Python `dataclass` that holds the core information about an environment - it's name, class type, default config, and suite tag. You'll mostly build these inside an `EnvSuite.specs` list rather than constructing them directly.
+`EnvSpec` is a Python `dataclass` that holds the core information about an environment - its name, class type, default config, and suite tag. You'll mostly build these inside an `EnvSuite.specs` list rather than constructing them directly.
 
 Here's a simple example:
 
@@ -110,7 +110,7 @@ suite.n_envs  # 2
 
 #### `get_name()`
 
-Builds the canonical ID for one environments short name. This is the one that's used within the `register()` and [`make()`](make.md) methods (more on those in the next tutorial).
+Builds the canonical ID for one environment's short name. This is the one that's used within the `register()` and [`make()`](make.md) methods (more on those in the next tutorial).
 
 The format is simple: `<prefix>/<env_name>-<suite_version>`.
 
@@ -239,7 +239,7 @@ That covers our three building blocks, let's move onto the `register()` methods!
 
 ## Environment Registration
 
-One of the biggest benefits of [Gymnasium [:material-arrow-right-bottom:]](https://gymnasium.farama.org/) is it's unified environment registry so that you can easily pick and choose which environments you want just by using its canonical name.
+One of the biggest benefits of [Gymnasium [:material-arrow-right-bottom:]](https://gymnasium.farama.org/) is its unified environment registry so that you can easily pick and choose which environments you want just by using its canonical name.
 
 Now that we've seen how to create our own environments and suites, we can add them to an Envrax registry. There are two ways to do this:
 
@@ -261,12 +261,12 @@ from envrax import EnvConfig
 envrax.register("BallEnv-v0", BallEnv, BallConfig())
 ```
 
-This has four positional arguments:
+This takes three positional arguments and one optional keyword argument:
 
 1. **Canonical name** - this is the unique name used within the registry. By convention, end it with `-v<N>` so different versions can coexist.
 2. **Environment class** — the environment class type to register.
 3. **Default config** — the environment config to use with it.
-4. **Suite name** (optional) - a human-readable suite category tag.
+4. **Suite name** (optional, keyword) - a human-readable suite category tag.
 
 An example with the `suite` keyword:
 
@@ -308,7 +308,7 @@ register_suite(DemoSuite(), version="v1")
 If you want to quickly verify that a `EnvSpec` or suite of environments is registered correctly, you can use one of the following:
 
 - `registered_names()` - provides a list of canonical IDs stored in the Envrax registry
-- `get_spec()` - accepts a single canonical ID and returns it `EnvSpec`, if it exists
+- `get_spec()` - accepts a single canonical ID and returns its `EnvSpec`, if it exists
 
 ```python
 envrax.registered_names()
@@ -348,7 +348,7 @@ Now any user just needs to use `import demo_envs` once before calling an [`envra
 
 ### Application / Research Code
 
-For projects with small sample of custom environments that don't need an `EnvSuite` (training scripts, research code, evaluation pipelines), create a dedicated `registry.py` (or `envs/__init__.py`) that imports your env classes and registers them in one place:
+For projects with a small set of custom environments that don't need an `EnvSuite` (training scripts, research code, evaluation pipelines), create a dedicated `registry.py` (or `envs/__init__.py`) that imports your env classes and registers them in one place:
 
 ```python
 # myproject/registry.py
@@ -361,7 +361,7 @@ envrax.register("BallEnv-v0", BallEnv, BallConfig())
 envrax.register("CartPole-v0", CartpoleEnv, CartpoleConfig())
 ```
 
-Then every file entry point - `train.py`, `eval.py`, `plot.py` - can use the same one-liner to populate the registry:
+Then every entry point - `train.py`, `eval.py`, `plot.py` - can use the same one-liner to populate the registry:
 
 ```python
 import myproject.registry
@@ -373,11 +373,11 @@ One symmetric entry point with minimal effort! :smile:
 
 - **Registering inside functions that run repeatedly.** The registry raises `ValueError` on duplicate names, so this will break your training loops.
 - **Registering at the bottom of each environment file/`EnvSuite`.** This works, but it spreads the catalog across `N` files, makes side-effect-free imports impossible, and is easy to break by renaming or moving a file.
-- **Copy-pasting `register()` calls into every entry point.** This inevitably can cause environments to drift out of sync and you get a confusing "Unknown environment" error.
+- **Copy-pasting `register()` calls into every entry point.** This inevitably causes environments to drift out of sync, leading to confusing "Unknown environment" errors.
 
 ## Common Pitfalls
 
-Here's some common "gotcha's" to be mindful of:
+Here are some common "gotchas" to be mindful of:
 
 - **`ValueError: Unknown environment: 'BallEnv-v0'`** - you called a [`make()`](make.md) method before the environment(s) were registered. Check your import order.
 - **`ValueError: Environment 'BallEnv-v0' is already registered`** - re-registering an existing environment. Use a different version (`-v1`) or restart the process.

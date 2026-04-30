@@ -9,7 +9,7 @@ All environment logic follows a *stateless functional design* that builds on top
 
 ## Why Envrax?
 
-One of the downsides of RL research is sample efficiency. Often the environment becomes the main bottleneck for model training because they are restricted, and built, around CPU utilisation.
+One of the downsides of RL research is sample efficiency. Often the environment becomes the main bottleneck for model training because it's restricted, and built, around CPU utilisation.
 
 For example, the [Atari](https://ale.farama.org/) suite is CPU constrained and, from our experience, when we increase the number of environments running in parallel, a single training step drastically increases wall-clock time. Gradient computations on a GPU could take ~30 seconds but the sample retrieval takes over 2+ minutes (400% increase) because of the CPU bottleneck and that's with efficiency tricks!
 
@@ -55,7 +55,7 @@ from envrax.spaces import Box, Discrete
 
 # Core inheritable items
 config = EnvConfig()        # static configuration
-env = MyEnv(config=config)  # E.g., MyEnv extends JaxEnv with JaxEnv[Box, Discrete, MyEnvState, EnvConfig]
+env = MyEnv(config=config)  # e.g., MyEnv extends JaxEnv with JaxEnv[Box, Discrete, MyEnvState, EnvConfig]
 
 # Required inputs
 rng = jax.random.key(42)    # PRNG key (only for reset)
@@ -76,7 +76,7 @@ This differs slightly from the Gymnasium API standard to maintain JAX compatibil
 
 ### State and Config as PyTrees
 
-The environment state (`EnvState`) and configuration (`EnvConfig`) are `chex.dataclass` PyTrees. You extend them with game-specific fields such as positions, velocities, timers, while maintaining full compatibility with JAX serialisation, and batched transforms.
+The environment state (`EnvState`) and configuration (`EnvConfig`) are `chex.dataclass` PyTrees. You extend them with game-specific fields such as positions, velocities, timers, while maintaining full compatibility with JAX serialisation and batched transforms.
 
 In their base forms we have:
 
@@ -92,7 +92,7 @@ class EnvConfig:
     max_steps: int = 1000  # maximum number of steps per episode
 ```
 
-The `EnvConfig` acts as static configuration values that are declared once and never changed. While `EnvState` is mutated through the environments lifecycle.
+The `EnvConfig` acts as static configuration values that are declared once and never changed, while `EnvState` is mutated through the environment's lifecycle.
 
 ### Generics and Type Safety
 
@@ -320,7 +320,7 @@ This code should work "as is".
 
 ### Making Parallel Copies of It
 
-Like Gymnasium's `vector` module, Envrax has it's own `VecEnv` wrapper that can be used to create any `JaxEnv` to run `N` parallel instances via `jax.vmap`. Each environment auto-resets independently when its episode ends.
+Like Gymnasium's `vector` module, Envrax has its own `VecEnv` wrapper that can be used to create any `JaxEnv` to run `N` parallel instances via `jax.vmap`. Each environment auto-resets independently when its episode ends.
 
 ```python
 import jax
@@ -341,7 +341,7 @@ This code should work "as is" with the custom `BallEnv`.
 
 ### Managing Multiple Environments
 
-Envrax also comes out-of-the-box with multi environment handling. This is useful for meta-learning, multi-task training, or any scenario where you need `M` different environments running simultaneously, use `MultiEnv` or `MultiVecEnv`:
+Envrax also comes out-of-the-box with multi environment handling. This is useful for meta-learning, multi-task training, or any scenario where you need `M` different environments running simultaneously. For these cases, use `MultiEnv` or `MultiVecEnv`:
 
 ```python
 import jax
@@ -419,7 +419,7 @@ import jax
 # Init the environment
 env = envrax.make("BallEnv-v0")
 
-# Set it's initial state
+# Set its initial state
 key = jax.random.key(42)
 obs, state = env.reset(key)
 
@@ -431,7 +431,7 @@ for _ in range(1000):
     # If episode has ended, reset to start a new one
     if done:
         new_key, key = jax.random.split(key)
-        obs, info = env.reset(new_key)
+        obs, state = env.reset(new_key)
 ```
 
 ### `JitWrapper` — manual JIT control
@@ -465,7 +465,7 @@ vec_env.compile()  # warm up the vmapped reset + step
 | --- | --- |
 | `EnvState` | `chex.dataclass` — `rng: PRNGKey`, `step: int32`, `done: bool`. Extend to add game-specific fields. |
 | `EnvConfig` | `chex.dataclass` — `max_steps: int = 1000`. Extend to add game-specific config. |
-| `JaxEnv[ObsSpaceT, ActSpaceT, StateT]` | Generic abstract base. Implement `reset`, `step`, `observation_space`, `action_space`. |
+| `JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]` | Generic abstract base. Implement `reset`, `step`, `observation_space`, `action_space`. |
 
 ### Factory Functions (`envrax.make`)
 
@@ -476,7 +476,7 @@ vec_env.compile()  # warm up the vmapped reset + step
 | `make_multi(names, *, wrappers, ...)` | Create a `MultiEnv` managing `M` heterogeneous environments using each env's registered default config. `pre_warm` defaults to `False`. |
 | `make_multi_vec(names, n_envs, *, wrappers, ...)` | Create a `MultiVecEnv` managing `M` heterogeneous vectorised environments using each env's registered default config. `pre_warm` defaults to `False`. |
 
-### Multi-Env Managers (`envrax.multi_env`, `envra.multi_vec_env`)
+### Multi-Env Managers (`envrax.multi_env`, `envrax.multi_vec_env`)
 
 | Symbol | Description |
 | --- | --- |

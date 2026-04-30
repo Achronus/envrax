@@ -137,7 +137,7 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
         # Init the environment
         env = BallEnv()
 
-        # Set it's initial state
+        # Set its initial state
         obs, state = env.reset(jax.random.key(42))
         print("obs:", obs)             # shape (2,) — starting position
         print("step:", state.step)     # 0
@@ -154,7 +154,7 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
 We can build an Envrax environment in three easy steps:
 
 1. Choosing a class name and assigning the generic types
-2. Defining the environments spaces
+2. Defining the environment's spaces
 3. Implementing the methods - `reset` and `step`
 
 ### Step 1: Declaring our Class
@@ -213,7 +213,7 @@ class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]): # (1)
     ...
 ```
 
-1. Format: `[observation_space, action_space, EnvState]`
+1. Format: `[observation_space, action_space, EnvState, EnvConfig]`
 
 ### Step 2: Defining our Spaces
 
@@ -235,7 +235,7 @@ class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
 Before writing any code, let's first consider what the `reset` and `step` methods actually do:
 
 - `reset` - takes a `jax.random.key()` and outputs an **initial observation** and an **initial `EnvState`**.
-- `step` - takes the current `EnvState` and an agents `action` and iterates through the environment to transition to a **new observation**, produces a **new `EnvState`**, provides a **reward**, a **termination result** defining whether the environment has ended, and additional **metadata**.
+- `step` - takes the current `EnvState` and an agent's `action` and iterates through the environment to transition to a **new observation**, produces a **new `EnvState`**, provides a **reward**, a **termination result** defining whether the environment has ended, and additional **metadata**.
 
 #### Reset Method
 
@@ -245,7 +245,7 @@ Before writing any code, let's first consider what the `reset` and `step` method
 2. Creating the initial state
 3. Creating the initial observation
 
-For the PRNG key, we split it once into two keys - the first for the `BallState` and the second for splitting again to create the balls *random starting position* (the `x` and `y` positions).
+For the PRNG key, we split it once into two keys - the first for the `BallState` and the second for splitting again to create the ball's *random starting position* (the `x` and `y` positions).
 
 Here's what the first part looks like:
 
@@ -273,7 +273,7 @@ Now, we can create the initial state with starting values using the random keys:
     ...
 ```
 
-Since we are using `jnp.float32` values for the balls `(x, y)` position, we sample from a [uniform [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/_autosummary/jax.random.uniform.html) distribution to get a random starting state that's different with every key.
+Since we are using `jnp.float32` values for the ball's `(x, y)` position, we sample from a [uniform [:material-arrow-right-bottom:]](https://docs.jax.dev/en/latest/_autosummary/jax.random.uniform.html) distribution to get a random starting state that's different with every key.
 
 Finally, we can create the initial observation using the initial positions and return the required values:
 
@@ -307,7 +307,7 @@ def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, BallState]:
 
 Now, the `step` method. Recall that:
 
-> `step` - takes the current `EnvState` and an agents `action` and iterates through the environment to transition to a **new observation**, produces a **new `EnvState`**, provides a **reward**, a **termination result** defining whether the environment has ended, and additional **metadata**.
+> `step` - takes the current `EnvState` and an agent's `action` and iterates through the environment to transition to a **new observation**, produces a **new `EnvState`**, provides a **reward**, a **termination result** defining whether the environment has ended, and additional **metadata**.
 
 Yikes! :face_with_peeking_eye: There's a lot to unpack there so let's think about this carefully. We need to:
 
@@ -319,7 +319,7 @@ Yikes! :face_with_peeking_eye: There's a lot to unpack there so let's think abou
 6. Get the metadata for the environment step
 7. Return the required values
 
-That's a lot! Let's take it one step at a time, starting with the PRNG management. For this, we want to extract the `rng` key from the provided `state` and split it for reuse during for the next timestep.
+That's a lot! Let's take it one step at a time, starting with the PRNG management. For this, we want to extract the `rng` key from the provided `state` and split it for reuse on the next timestep.
 
 We can do this in one line using our handy-dandy `jax.random.split()` approach:
 
@@ -353,7 +353,7 @@ Then, we'll use `jnp.clip` to increment our ball state while keeping its values 
 
 Notice how we've used the `self.config.friction` config field here (`BallConfig.friction`). To give that real ball feel, every per-step displacement is scaled by friction. If we reduce it to `0.5`, the ball will move more sluggishly, but if we bump it up to `1.0`, it moves at full speed.
 
-If we wanted, we could separate this out into a separate `_act()` method on the environment class to keep our `step()` method easy to read. We won't do that here for this simple tutorial, but something to think about when building more complex ones! :wink:
+If we wanted, we could move this out into a separate `_act()` method on the environment class to keep our `step()` method easy to read. We won't do that here for this simple tutorial, but something to think about when building more complex ones! :wink:
 
 Now, we use the `.replace()` method to update the `EnvState` and create the observation just like the initial one but with our `new_state` instead:
 
@@ -392,7 +392,7 @@ Here's what all of that looks like:
 
 ??? info "Customization"
 
-    These three values (`reward`, `done`, `info`) can be far more complicated and customized depending on your environments complexity. 
+    These three values (`reward`, `done`, `info`) can be far more complicated and customized depending on your environment's complexity. 
     
     It's not uncommon to extract these into their own full-blown helper methods such as `_reward()`, `_done()`, and `_info`, just like an `_act()` function. In fact, it's a good practice to do so!
     

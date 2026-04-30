@@ -138,7 +138,7 @@ multi = MultiEnv([
 ])
 ```
 
-Wrappers apply to every environment in the list. The same pipeline must be compatible with every environment's observation and action space; if a sample of the environments need different wrappers, build two (or more) separate `MultiEnv`s instead.
+Wrappers apply to every environment in the list. The same pipeline must be compatible with every environment's observation and action space; if a subset of the environments needs different wrappers, build two (or more) separate `MultiEnv`s instead.
 
 Unlike `make()`, the `pre_warm` parameter defaults to `False` here. JIT wrapping still happens at construction, but XLA compilation is deferred so you don't pay the cost `N` times in a row. Trigger it explicitly as a separate setup phase using the `compile()` method:
 
@@ -186,9 +186,9 @@ To recap:
 - `make()`, `make_vec()`, `make_multi()`, `make_multi_vec()` all use canonical ID lookups to get environments from the registry
 - All four share `wrappers`, `jit_compile`, `pre_warm`, and `cache_dir` keyword arguments
 - `make()` and `make_vec()` accept a `config` argument for per-env overrides
-- `make_multi()` and `make_multi_vec()` use the environments registered default `config`
+- `make_multi()` and `make_multi_vec()` use each environment's registered default `config`
 - Wrappers compose innermost-first and parameterised ones are called without `env` to defer binding
-- `make_multi()` and `make_multi_vec()`'s wrapper pipeline must be compatible with every env in the list. If not, split them into multiple `MultiEnv`s
+- The wrapper pipeline for `make_multi()` / `make_multi_vec()` must be compatible with every env in the list — if not, split them into multiple `MultiEnv`s
 - `jit_compile=False` opts out of `JitWrapper`; `pre_warm=False` defers XLA compilation
 - `make_multi` methods default to `pre_warm=False` requiring a separate `.compile()` call
 

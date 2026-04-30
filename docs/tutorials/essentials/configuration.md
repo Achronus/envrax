@@ -16,9 +16,9 @@ One field that defines the default episode length of the environment. Nice and s
 
 ## EnvConfig vs. EnvState
 
-Now you may be wondering: "Can't everything just live in `EnvState`"? While technically true the key distinction is in how JAX handles **static**  vs. **traceable** data. As we mentioned in our earlier tutorials, we need to be careful not to mix static data with traceable data.
+Now you may be wondering: "Can't everything just live in `EnvState`?" While technically true, the key distinction is in how JAX handles **static** vs. **traceable** data. As we mentioned in our earlier tutorials, we need to be careful not to mix static data with traceable data.
 
-> **Traceable** values act as runtime data, allowing them to be changed during each function call without triggering a JIT-compile. While **static** values need to be re-traced and re-compiled whenever they change.
+> **Traceable** values act as runtime data, allowing them to be changed during each function call without triggering a JIT-compile. **Static** values, on the other hand, need to be re-traced and re-compiled whenever they change.
 
 As a rule of thumb:
 
