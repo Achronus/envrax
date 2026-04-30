@@ -520,6 +520,34 @@ class TestRecordVideo:
         # After done, recording resets
         assert env.recording is False
 
+    def test_reset_inside_jit_raises(self, tmp_path):
+        import pytest
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(_RenderEnv(config=EnvConfig(max_steps=1)), output_dir=tmp_path)
+        with pytest.raises(RuntimeError, match="incompatible with JAX transforms"):
+            jax.jit(env.reset)(_RNG)
+
+    def test_step_inside_jit_raises(self, tmp_path):
+        import pytest
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(_RenderEnv(config=EnvConfig(max_steps=2)), output_dir=tmp_path)
+        _, state = env.reset(_RNG)
+        with pytest.raises(RuntimeError, match="incompatible with JAX transforms"):
+            jax.jit(env.step)(state, jnp.int32(0))
+
+    def test_step_inside_vmap_raises(self, tmp_path):
+        import pytest
+        from envrax.wrappers import RecordVideo
+
+        env = RecordVideo(_RenderEnv(config=EnvConfig(max_steps=2)), output_dir=tmp_path)
+        _, state = env.reset(_RNG)
+        # vmap over a batched action axis
+        actions = jnp.zeros(3, dtype=jnp.int32)
+        with pytest.raises(RuntimeError, match="incompatible with JAX transforms"):
+            jax.vmap(lambda a: env.step(state, a))(actions)
+
 
 # ---------------------------------------------------------------------------
 # require_box validation

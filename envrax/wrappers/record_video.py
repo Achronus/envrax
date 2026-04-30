@@ -3,9 +3,20 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import chex
 import numpy as np
+from jax.core import Tracer
 
 from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.wrappers.base import Wrapper
+
+
+def _ensure_not_traced(value: Any) -> None:
+    """Raise `RuntimeError` if `value` is a JAX tracer."""
+    if isinstance(value, Tracer):
+        raise RuntimeError(
+            "RecordVideo wrapper is incompatible with JAX transforms. "
+            "Use it outside any `jax.jit`, `jax.vmap`, or `jax.lax.scan` "
+            "boundary, such as for evaluation rollouts."
+        )
 
 
 class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
@@ -125,6 +136,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         state : StateT
             Initial environment state
         """
+        _ensure_not_traced(rng)
         obs, state = self._env.reset(rng)
 
         self._recording = self._should_record_episode()
@@ -169,6 +181,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         info : Dict[str, Any]
             Pass-through info dict from the inner environment
         """
+        _ensure_not_traced(action)
         obs, new_state, reward, done, info = self._env.step(state, action)
         self._global_step += 1
 
