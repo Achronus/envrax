@@ -32,7 +32,7 @@ We recommend completing the tutorials in order below to get the most out of this
 
 | # | Tutorial | Teaches |
 | - | --- | --- |
-| 1 | [State](essentials/state.md) | What state is, extending `EnvState`, threading `rng`, and managing per-episode fields |
+| 1 | [Environment State](essentials/state.md) | What state is, extending `EnvState`, threading `rng`, and managing per-episode fields |
 | 2 | [Spaces](essentials/spaces.md) | What spaces are and using contracts like `Box`, `Discrete`, and `MultiDiscrete` to describe your environment |
 | 3 | [Environment Configuration](essentials/configuration.md) | Extending `EnvConfig` with your own static fields |
 | 4 | [Your First Environment](essentials/first-env.md) | Subclassing `JaxEnv`, implement the primary methods `reset` and `step`, and how to use it |

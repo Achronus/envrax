@@ -58,7 +58,7 @@ nav:
   - Tutorials:
       - Tutorials: tutorials/index.md
       - Essentials:
-          - State: tutorials/essentials/state.md
+          - Environment State: tutorials/essentials/state.md
           - Spaces: tutorials/essentials/spaces.md
           - Environment Configuration: tutorials/essentials/configuration.md
           - Your First Environment: tutorials/essentials/first-env.md
