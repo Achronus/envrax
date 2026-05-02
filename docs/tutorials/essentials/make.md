@@ -1,8 +1,18 @@
 # Make Methods
 
-Once your environments are [registered](registry.md) to the registry, you can start using them with the `make` factory methods.
+Isn't it exhausting having to declare your own environment classes, add wrappers, and manually JIT compile them just to be able to use them? :face_exhaling:
+
+What if there was a better way to do it? :thinking:
+
+Well, there is! That's what the `make()` methods are for! We'll explore these in more detail throughout this tutorial and understand how they can be used to simplify environment creation and improve your workflow.
 
 ## Methods Overview
+
+??? warning "`make()` Methods Require a Registry"
+
+    Make sure you've set up an Envrax [registry](registry.md) first. Otherwise, you cannot use the `make` factory methods — they depend on it!
+
+There are four `make()` methods in total, all sharing similar functionality but for different use cases.
 
 Here's a list of them and when to use them:
 
@@ -78,11 +88,11 @@ env = envrax.make(
 )
 ```
 
-We'll discuss the full list of [Available Wrappers](wrappers.md) Envrax offers in the next tutorial.
+We'll discuss the full list of [Available Wrappers](wrappers.md) that Envrax offers in the next tutorial.
 
 For JIT-compilation, `make()` wraps the environment in a `JitWrapper` by default and pre-warms the XLA cache on construction.
 
-You can opt-out of this using the `jit_compile` and `pre_warm` parameters:
+You can opt out of this using the `jit_compile` and `pre_warm` parameters:
 
 ```python
 env = envrax.make(
@@ -100,7 +110,7 @@ Disable `jit_compile` when you need a Python-side env (debugging, evaluation wit
 
     [`envrax.make.make_vec`](../../api/make.md#envrax.make.make_vec)
 
-Use this method for creating single batched environments. It returns a `VecEnv` ready to use.
+Use this method for creating a single vectorised environment. It returns a `VecEnv` ready to use.
 
 This follows the same principles as `make()` but requires the `n_envs` parameter to make multiple copies of the environment:
 
@@ -109,7 +119,7 @@ vec_env = envrax.make_vec("BallEnv-v0", n_envs=64)
 obs, states = vec_env.reset(jax.random.key(0)) # obs: [64, ...]
 ```
 
-Wrappers are applied to the *inner* env first (the per-env transformations), then `VecEnv` wraps the wrapped env. See [Vectorising](vectorising.md#using-wrappers) for the rationale.
+Wrappers are applied to the *inner* env first (the per-env transformations), then `VecEnv` wraps the result. See [Vectorising](vectorising.md#using-wrappers) for the rationale.
 
 ## `make_multi()`
 
@@ -117,7 +127,7 @@ Wrappers are applied to the *inner* env first (the per-env transformations), the
 
     [`envrax.make.make_multi`](../../api/make.md#envrax.make.make_multi)
 
-Use this method for creating a list of heterogeneous environments. It returns a `MultiEnv` that manages the environments using the same API as normal with a few additional methods.
+Use this method for creating a list of heterogeneous environments. It returns a `MultiEnv` that manages the environments using the same API as normal, with a few additional methods.
 
 This is useful for meta-learning, multi-task training, or evaluation suites that span multiple environments.
 
@@ -187,10 +197,10 @@ To recap:
 - All four share `wrappers`, `jit_compile`, `pre_warm`, and `cache_dir` keyword arguments
 - `make()` and `make_vec()` accept a `config` argument for per-env overrides
 - `make_multi()` and `make_multi_vec()` use each environment's registered default `config`
-- Wrappers compose innermost-first and parameterised ones are called without `env` to defer binding
+- Wrappers compose innermost-first, and parameterised ones are called without `env` to defer binding
 - The wrapper pipeline for `make_multi()` / `make_multi_vec()` must be compatible with every env in the list — if not, split them into multiple `MultiEnv`s
 - `jit_compile=False` opts out of `JitWrapper`; `pre_warm=False` defers XLA compilation
-- `make_multi` methods default to `pre_warm=False` requiring a separate `.compile()` call
+- `make_multi` methods default to `pre_warm=False`, requiring a separate `.compile()` call
 
 Next up, we'll explore the available wrappers Envrax has to offer!
 
