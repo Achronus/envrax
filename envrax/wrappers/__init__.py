@@ -1,4 +1,10 @@
-from envrax.wrappers.base import StatefulWrapper, Wrapper, WrapperType, _WrapperFactory
+from envrax.wrappers.base import (
+    InnerStateT,
+    StatefulWrapper,
+    Wrapper,
+    WrapperType,
+    _WrapperFactory,
+)
 from envrax.wrappers.clip_reward import ClipReward
 from envrax.wrappers.discount import EpisodeDiscount
 from envrax.wrappers.expand_dims import ExpandDims
@@ -33,4 +39,5 @@ __all__ = [
     "_WrapperFactory",
     "resize",
     "to_gray",
+    "InnerStateT",
 ]
