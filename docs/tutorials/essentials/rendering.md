@@ -110,7 +110,7 @@ env = RecordVideo(BallEnv(), output_dir="runs/recordings/")
 # Every episode ends → MP4 saved to runs/recordings/episode_NNNN.mp4
 ```
 
-We talk more about [Recording Videos](../advanced/recording-video.md) in a separate tutorial.
+See the [`RecordVideo`](wrappers.md#recordvideo) section of the wrappers tutorial for the full set of trigger options.
 
 ## Common Pitfalls
 

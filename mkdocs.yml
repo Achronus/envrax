@@ -69,7 +69,6 @@ nav:
           - Available Wrappers: tutorials/essentials/wrappers.md
           - Rendering: tutorials/essentials/rendering.md
       - Advanced:
-          - Recording Video: tutorials/advanced/recording-video.md
           - Creating a Custom Wrapper: tutorials/advanced/custom-wrapper.md
           - Creating a Custom Space: tutorials/advanced/custom-spaces.md
           - Debugging JIT'd Environments: tutorials/advanced/debugging.md
