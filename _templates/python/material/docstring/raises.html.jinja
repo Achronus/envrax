@@ -1,0 +1,114 @@
+{#- Override of mkdocstrings-python's Raises template.
+
+Adds a `Name` column for numpy-style Raises entries written as
+`name : ExceptionType`. The `DocstringPolish` griffe extension splits that
+form into `raises.name` + a parsed `raises.annotation` expression, so the
+standard expression template handles cross-references (e.g. linking
+`ValueError` to the Python stdlib inventory).
+
+Context:
+  section (griffe.DocstringSectionRaises): The section to render.
+-#}
+
+{% block logs scoped %}
+  {{ log.debug("Rendering raises section (custom template)") }}
+{% endblock logs %}
+
+{% import "language.html.jinja" as lang with context %}
+
+{% if config.docstring_section_style == "table" %}
+  {% block table_style scoped %}
+    <p><span class="doc-section-title">{{ section.title or lang.t("Raises:") }}</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>{{ lang.t("Name") }}</th>
+          <th>{{ lang.t("Type") }}</th>
+          <th>{{ lang.t("Description") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for raises in section.value %}
+          <tr class="doc-section-item">
+            <td>
+              {% if raises.name is defined and raises.name %}
+                <code>{{ raises.name }}</code>
+              {% endif %}
+            </td>
+            <td>
+              {% if raises.annotation %}
+                {% with expression = raises.annotation, backlink_type = "raised-by" %}
+                  <code>{% include "expression.html.jinja" with context %}</code>
+                {% endwith %}
+              {% endif %}
+            </td>
+            <td>
+              <div class="doc-md-description">
+                {{ raises.description|convert_markdown(heading_level, html_id, autoref_hook=autoref_hook) }}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endblock table_style %}
+{% elif config.docstring_section_style == "list" %}
+  {% block list_style scoped %}
+    <p><span class="doc-section-title">{{ lang.t(section.title) or lang.t("Raises:") }}</span></p>
+    <ul>
+      {% for raises in section.value %}
+        <li class="doc-section-item field-body">
+          {% if raises.name is defined and raises.name %}
+            <b><code>{{ raises.name }}</code></b>
+          {% endif %}
+          {% if raises.annotation %}
+            {% with expression = raises.annotation, backlink_type = "raised-by" %}
+              (<code>{% include "expression.html.jinja" with context %}</code>)
+            {% endwith %}
+            –
+          {% endif %}
+          <div class="doc-md-description">
+            {{ raises.description|convert_markdown(heading_level, html_id, autoref_hook=autoref_hook) }}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endblock list_style %}
+{% elif config.docstring_section_style == "spacy" %}
+  {% block spacy_style scoped %}
+    <table>
+      <thead>
+        <tr>
+          <th><span class="doc-section-title">{{ lang.t("NAME") }}</span></th>
+          <th><span class="doc-section-title">{{ (section.title or lang.t("RAISES")).rstrip(":").upper() }}</span></th>
+          <th><span>{{ lang.t("DESCRIPTION") }}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for raises in section.value %}
+          <tr class="doc-section-item">
+            <td>
+              {% if raises.name is defined and raises.name %}
+                <code>{{ raises.name }}</code>
+              {% endif %}
+            </td>
+            <td>
+              <span class="doc-raises-annotation">
+                {% if raises.annotation %}
+                  {% with expression = raises.annotation, backlink_type = "raised-by" %}
+                    <code>{% include "expression.html.jinja" with context %}</code>
+                  {% endwith %}
+                {% endif %}
+              </span>
+            </td>
+            <td class="doc-raises-details">
+              <div class="doc-md-description">
+                {{ raises.description|convert_markdown(heading_level, html_id, autoref_hook=autoref_hook) }}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endblock spacy_style %}
+{% endif %}

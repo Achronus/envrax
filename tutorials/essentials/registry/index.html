@@ -1,0 +1,3020 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Gymnasium-style API standard for RL environment creation in JAX.">
+      
+      
+      
+        <link rel="canonical" href="https://envrax.achronus.dev/tutorials/essentials/registry/">
+      
+      
+        <link rel="prev" href="../multi-env/">
+      
+      
+        <link rel="next" href="../make/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/imgs/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Environment Registry - Envrax</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../assets/css/icons.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="green" data-md-color-accent="green">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#environment-registry" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Envrax" class="md-header__button md-logo" aria-label="Envrax" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15 6.04 7.5 12 10.85l5.96-3.35zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Envrax
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Environment Registry
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="green" data-md-color-accent="green"  aria-hidden="true"  type="radio" name="__palette" id="__palette_0">
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Achronus/envrax" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Achronus/envrax
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../starting/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../license/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  License
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Envrax" class="md-nav__button md-logo" aria-label="Envrax" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.99.99 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88zM12 4.15 6.04 7.5 12 10.85l5.96-3.35zM5 15.91l6 3.38v-6.71L5 9.21zm14 0v-6.7l-6 3.37v6.71z"/></svg>
+
+    </a>
+    Envrax
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Achronus/envrax" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Achronus/envrax
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../starting/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Essentials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Essentials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spaces/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your First Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../vectorising/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vectorising
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multiple Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Registry
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page Contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page Contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defining-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Defining Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#envspec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSpec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envsuite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSuite
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EnvSuite">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_name()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        all_names()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-is_available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check() &amp; is_available()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-length-slicing-and-membership" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration, length, slicing, and membership
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EnvSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all_names_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        all_names()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#env_categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        env_categories()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify_packages()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-length-and-merging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration, length, and merging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Registration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_suite()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility Methods
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-register-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When To Register Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When To Register Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#library-environment-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library / Environment Suite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#application-research-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application / Research Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-avoid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What To Avoid
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Pitfalls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../make/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Make Methods
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wrappers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Available Wrappers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/custom-wrapper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Custom Wrapper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/custom-spaces/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating a Custom Space
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../api/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environments
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Environments
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/env/base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Single Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/env/vec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vectorised
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/env/multi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/spaces/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wrappers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Wrappers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base Wrappers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wrapper Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/passthrough/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pass-Through Wrappers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/stateful/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stateful Wrappers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/states/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wrapper States
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wrappers/helpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Factory Helpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Registry
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Environment Registry
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/registry/registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/registry/suite/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/make/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Make Methods
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/error/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page Contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page Contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defining-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defining Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Defining Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#envspec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSpec
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envsuite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSuite
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EnvSuite">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_name()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all_names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        all_names()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-is_available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        check() &amp; is_available()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-length-slicing-and-membership" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration, length, slicing, and membership
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#envset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EnvSet
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="EnvSet">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#all_names_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        all_names()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#env_categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        env_categories()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify_packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        verify_packages()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iteration-length-and-merging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Iteration, length, and merging
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Registration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Registration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#register" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register_suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_suite()
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Utility Methods
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-to-register-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When To Register Environments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When To Register Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#library-environment-suite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library / Environment Suite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#application-research-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Application / Research Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-avoid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What To Avoid
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Pitfalls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../../" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Tutorials
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../state/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Essentials
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="environment-registry">Environment Registry<a class="headerlink" href="#environment-registry" title="Permanent link">&para;</a></h1>
+<p>Envrax ships with an easy way to create a shared environment registry that maps canonical environment <em>names</em> to their class, default config, and suite metadata. Once registered, any part of your code - training loops, evaluation scripts, configuration files - can refer to an environment by a string like <code>"BallEnv-v0"</code> instead of using the class directly.</p>
+<p>As Envrax is the base API standard, the registry starts <strong>empty</strong>. Environments are contributed by your code (or by suite packages you install) via <code>register()</code> and <code>register_suite()</code>.</p>
+<p>We'll focus on how this works and how to use these methods effectively throughout this tutorial. Without further ado, let's get into it! <img alt="🚀" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" title=":rocket:" /></p>
+<h2 id="defining-environments">Defining Environments<a class="headerlink" href="#defining-environments" title="Permanent link">&para;</a></h2>
+<p>Before we explore the <code>register()</code> methods, we first need to understand how environments are defined within the registry.</p>
+<p>There are three main building blocks:</p>
+<ul>
+<li><code>EnvSpec</code> - the individual specification for an environment.</li>
+<li><code>EnvSuite</code> - a named, versioned collection of environment specs (<code>EnvSpec</code>) that belong to a single suite.</li>
+<li><code>EnvSet</code> - an ordered collection of multiple <code>EnvSuite</code> instances.</li>
+</ul>
+<p>We'll build our understanding of these first!</p>
+<h3 id="envspec">EnvSpec<a class="headerlink" href="#envspec" title="Permanent link">&para;</a></h3>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<p><a href="../../../api/registry/suite/#envrax.suite.EnvSpec"><code>envrax.suite.EnvSpec</code></a></p>
+</details>
+<p><code>EnvSpec</code> is a Python <code>dataclass</code> that holds the core information about an environment - its name, class type, default config, and suite tag. You'll mostly build these inside an <code>EnvSuite.specs</code> list rather than constructing them directly.</p>
+<p>Here's a simple example:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvSpec</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demo_envs.cartpole</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartpoleEnv</span><span class="p">,</span> <span class="n">CartpoleConfig</span>
+
+<span class="n">spec</span> <span class="o">=</span> <span class="n">EnvSpec</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cartpole&quot;</span><span class="p">,</span>  <span class="c1"># (1)</span>
+    <span class="n">env_class</span><span class="o">=</span><span class="n">CartpoleEnv</span><span class="p">,</span> 
+    <span class="n">default_config</span><span class="o">=</span><span class="n">CartpoleConfig</span><span class="p">(),</span>
+    <span class="c1"># suite=&quot;MuJoCo&quot;,  # (2)</span>
+<span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+<ol>
+<li>We recommend these to be lowercase</li>
+<li>Populated automatically!</li>
+</ol>
+<h3 id="envsuite">EnvSuite<a class="headerlink" href="#envsuite" title="Permanent link">&para;</a></h3>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<p><a href="../../../api/registry/suite/#envrax.suite.EnvSuite"><code>envrax.suite.EnvSuite</code></a></p>
+</details>
+<p><code>EnvSuite</code> is made up of multiple <code>EnvSpecs</code> to create a suite of environments. This could be Atari games, Procgen games, DMLab environments, or any other custom <em>collection</em> of environments put under one banner.</p>
+<p>They define a name (<code>prefix</code>) for the suite, a human-readable <code>category</code> label, a <code>version</code> for the suite, a list of the <code>required_packages</code>, and a list of the environment <code>specs</code> that belong to it.</p>
+<p>This is used as a base class and <strong>must</strong> be inherited from to be able to use it.</p>
+<p>Here's how to create one:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvSpec</span><span class="p">,</span> <span class="n">EnvSuite</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demo_envs.cartpole</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartpoleEnv</span><span class="p">,</span> <span class="n">CartpoleConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">demo_envs.ant</span><span class="w"> </span><span class="kn">import</span> <span class="n">AntEnv</span><span class="p">,</span> <span class="n">AntConfig</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DemoSuite</span><span class="p">(</span><span class="n">EnvSuite</span><span class="p">):</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;mjx&quot;</span>
+    <span class="n">category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;MuJoCo Playground&quot;</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;v0&quot;</span>
+    <span class="n">required_packages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;demo_envs&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">specs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">EnvSpec</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
+            <span class="n">EnvSpec</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cartpole&quot;</span><span class="p">,</span> 
+                <span class="n">env_class</span><span class="o">=</span><span class="n">CartpoleEnv</span><span class="p">,</span> 
+                <span class="n">default_config</span><span class="o">=</span><span class="n">CartpoleConfig</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">EnvSpec</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ant&quot;</span><span class="p">,</span>
+                <span class="n">env_class</span><span class="o">=</span><span class="n">AntEnv</span><span class="p">,</span>
+                <span class="n">default_config</span><span class="o">=</span><span class="n">AntConfig</span><span class="p">(),</span>
+            <span class="p">),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Now, we get canonical IDs for each environment in the format: <code>mjx/cartpole-v0</code>.</p>
+<p>That's not the only thing we can do though! <code>EnvSuite</code> comes with a few useful attributes and methods.</p>
+<h4 id="attributes">Attributes<a class="headerlink" href="#attributes" title="Permanent link">&para;</a></h4>
+<p>There are two read-only attributes:</p>
+<ol>
+<li><code>envs</code> - lists the environment names of the suite</li>
+<li><code>n_envs</code> - provides the total number of environments in the suite</li>
+</ol>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">suite</span> <span class="o">=</span> <span class="n">DemoSuite</span><span class="p">()</span>
+
+<span class="n">suite</span><span class="o">.</span><span class="n">envs</span>    <span class="c1"># [&#39;cartpole&#39;, &#39;ant&#39;]</span>
+<span class="n">suite</span><span class="o">.</span><span class="n">n_envs</span>  <span class="c1"># 2</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="get_name"><code>get_name()</code><a class="headerlink" href="#get_name" title="Permanent link">&para;</a></h4>
+<p>Builds the canonical ID for one environment's short name. This is the one that's used within the <code>register()</code> and <a href="../make/"><code>make()</code></a> methods (more on those in the next tutorial).</p>
+<p>The format is simple: <code>&lt;prefix&gt;/&lt;env_name&gt;-&lt;suite_version&gt;</code>.</p>
+<p>We can also pass in an optional <code>version</code> parameter to get a specific version of the environment, if you've shipped multiple versions:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">suite</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="s2">&quot;cartpole&quot;</span><span class="p">)</span>              <span class="c1"># &#39;mjx/cartpole-v0&#39;</span>
+<span class="n">suite</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="s2">&quot;cartpole&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;v1&quot;</span><span class="p">)</span>  <span class="c1"># &#39;mjx/cartpole-v1&#39;</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="all_names"><code>all_names()</code><a class="headerlink" href="#all_names" title="Permanent link">&para;</a></h4>
+<p>Returns the canonical IDs for every spec in one shot. This is convenient for when you need a flat list (e.g. for logging which envs were registered, or displaying the catalog in a UI).</p>
+<p>Again, we can pass in an optional <code>version</code> parameter to get a specific version of the environments:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">suite</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>              <span class="c1"># [&#39;mjx/cartpole-v0&#39;, &#39;mjx/ant-v0&#39;]</span>
+<span class="n">suite</span><span class="o">.</span><span class="n">all_names</span><span class="p">(</span><span class="n">version</span><span class="o">=</span><span class="s2">&quot;v1&quot;</span><span class="p">)</span>  <span class="c1"># [&#39;mjx/cartpole-v1&#39;, &#39;mjx/ant-v1&#39;]</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="check-is_available"><code>check()</code> &amp; <code>is_available()</code><a class="headerlink" href="#check-is_available" title="Permanent link">&para;</a></h4>
+<p>Need to know if your suite has the right packages installed? We've got you covered!</p>
+<p>The <code>check()</code> and <code>is_available()</code> methods explore the <code>required_packages</code> and verify if they are importable. <code>check()</code> returns a per-package status mapping, while <code>is_available()</code> collapses that into a single boolean:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">suite</span><span class="o">.</span><span class="n">check</span><span class="p">()</span>         <span class="c1"># {&#39;demo_envs&#39;: True}</span>
+<span class="n">suite</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>  <span class="c1"># True</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="iteration-length-slicing-and-membership">Iteration, length, slicing, and membership<a class="headerlink" href="#iteration-length-slicing-and-membership" title="Permanent link">&para;</a></h4>
+<p><code>EnvSuite</code> also comes with a standard collection of magic methods so it can behave just like a Python sequence of canonical IDs:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">list</span><span class="p">(</span><span class="n">suite</span><span class="p">)</span>  <span class="c1"># [&#39;mjx/cartpole-v0&#39;, &#39;mjx/ant-v0&#39;]</span>
+<span class="nb">len</span><span class="p">(</span><span class="n">suite</span><span class="p">)</span>  <span class="c1"># 2</span>
+<span class="s2">&quot;cartpole&quot;</span> <span class="ow">in</span> <span class="n">suite</span>  <span class="c1"># True</span>
+</code></pre></div></td></tr></table></div>
+<p>You can also slice a subset of the suite to get only a handful of them. Be warned, this does create a new <code>EnvSuite</code> instance:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">subset</span> <span class="o">=</span> <span class="n">suite</span><span class="p">[:</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">subset</span><span class="o">.</span><span class="n">envs</span>  <span class="c1"># [&#39;cartpole&#39;]</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="envset">EnvSet<a class="headerlink" href="#envset" title="Permanent link">&para;</a></h3>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<p><a href="../../../api/registry/suite/#envrax.suite.EnvSet"><code>envrax.suite.EnvSet</code></a></p>
+</details>
+<p><code>EnvSet</code> groups multiple <code>EnvSuite</code> instances into a single iterable. This can be useful when you want to compose several benchmarks into one heterogeneous catalog (e.g. Atari + MuJoCo).</p>
+<p>Unlike <code>EnvSuite</code>, you don't subclass it. You just pass any number of suites in and the set holds them in the order you provided:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvSet</span>
+
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">EnvSet</span><span class="p">(</span><span class="n">DemoSuite</span><span class="p">(),</span> <span class="n">AnotherSuite</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+<p>It also comes with its own attributes and methods.</p>
+<h4 id="attributes_1">Attributes<a class="headerlink" href="#attributes_1" title="Permanent link">&para;</a></h4>
+<p>There are two read-only attributes:</p>
+<ol>
+<li><code>suites</code> - the list of <code>EnvSuite</code> instances stored in the set</li>
+<li><code>n_envs</code> - the total number of environments across <strong>all</strong> suites</li>
+</ol>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">catalog</span><span class="o">.</span><span class="n">suites</span>   <span class="c1"># [DemoSuite(...), AnotherSuite(...)]</span>
+<span class="n">catalog</span><span class="o">.</span><span class="n">n_envs</span>   <span class="c1"># 7</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="all_names_1"><code>all_names()</code><a class="headerlink" href="#all_names_1" title="Permanent link">&para;</a></h4>
+<p>This returns the canonical IDs for every environment across <strong>every</strong> suite, flattened into one list.</p>
+<p>It supports the same optional <code>version</code> parameter as <code>EnvSuite.all_names()</code> for when you want to use a different suite version:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">catalog</span><span class="o">.</span><span class="n">all_names</span><span class="p">()</span>              <span class="c1"># [&#39;mjx/cartpole-v0&#39;, &#39;mjx/ant-v0&#39;, &#39;other/foo-v0&#39;, ...]</span>
+<span class="n">catalog</span><span class="o">.</span><span class="n">all_names</span><span class="p">(</span><span class="n">version</span><span class="o">=</span><span class="s2">&quot;v1&quot;</span><span class="p">)</span>  <span class="c1"># [&#39;mjx/cartpole-v1&#39;, &#39;mjx/ant-v1&#39;, ...]</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="env_categories"><code>env_categories()</code><a class="headerlink" href="#env_categories" title="Permanent link">&para;</a></h4>
+<p>Returns a <code>category → count</code> mapping summarising how many environments each suite has. This is handy for printing a quick catalog summary or grouping envs into a UI:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">catalog</span><span class="o">.</span><span class="n">env_categories</span><span class="p">()</span>  <span class="c1"># {&#39;MuJoCo Playground&#39;: 2, &#39;Other Suite&#39;: 5}</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="verify_packages"><code>verify_packages()</code><a class="headerlink" href="#verify_packages" title="Permanent link">&para;</a></h4>
+<p>Walks every suite and checks that its <code>required_packages</code> are importable.</p>
+<p>Unlike <code>EnvSuite.is_available()</code>, this one <strong>raises</strong> <code>MissingPackageError</code> listing every missing package per suite. It's useful to use as a one-shot guardrail that you can use at the top of a script or custom package:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># raises MissingPackageError if any packages are missing</span>
+<span class="n">catalog</span><span class="o">.</span><span class="n">verify_packages</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+<h4 id="iteration-length-and-merging">Iteration, length, and merging<a class="headerlink" href="#iteration-length-and-merging" title="Permanent link">&para;</a></h4>
+<p><code>EnvSet</code> also implements the standard collection of magic methods so it behaves like a flat sequence of canonical IDs across all suites:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nb">list</span><span class="p">(</span><span class="n">catalog</span><span class="p">)</span>  <span class="c1"># [&#39;mjx/cartpole-v0&#39;, &#39;mjx/ant-v0&#39;, &#39;other/foo-v0&#39;, ...]</span>
+<span class="nb">len</span><span class="p">(</span><span class="n">catalog</span><span class="p">)</span>   <span class="c1"># 7</span>
+</code></pre></div></td></tr></table></div>
+<p>You can also merge two sets together with the <code>+</code> operator. This returns a brand-new <code>EnvSet</code> containing the suites from both sides in order:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">merged</span> <span class="o">=</span> <span class="n">catalog</span> <span class="o">+</span> <span class="n">EnvSet</span><span class="p">(</span><span class="n">ThirdSuite</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+<p>That covers our three building blocks, let's move onto the <code>register()</code> methods!</p>
+<h2 id="environment-registration">Environment Registration<a class="headerlink" href="#environment-registration" title="Permanent link">&para;</a></h2>
+<p>One of the biggest benefits of <a href="https://gymnasium.farama.org/">Gymnasium [<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20 16-5.5 5.5-1.42-1.41L16.17 17H10.5A6.5 6.5 0 0 1 4 10.5V4h2v6.5C6 13 8 15 10.5 15h5.67l-3.08-3.09 1.41-1.41z"/></svg></span>]</a> is its unified environment registry so that you can easily pick and choose which environments you want just by using its canonical name.</p>
+<p>Now that we've seen how to create our own environments and suites, we can add them to an Envrax registry. There are two ways to do this:</p>
+<ol>
+<li><code>register()</code> - for individual environments</li>
+<li><code>register_suite()</code> - for a single suite of environments</li>
+</ol>
+<h3 id="register"><code>register()</code><a class="headerlink" href="#register" title="Permanent link">&para;</a></h3>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<p><a href="../../../api/registry/registry/#envrax.registry.register"><code>envrax.registry.register</code></a></p>
+</details>
+<p>Can be used to register one environment, under a single name, without a dedicated <code>EnvSuite</code>:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">envrax</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvConfig</span>
+
+<span class="n">envrax</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;BallEnv-v0&quot;</span><span class="p">,</span> <span class="n">BallEnv</span><span class="p">,</span> <span class="n">BallConfig</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+<p>This takes three positional arguments and one optional keyword argument:</p>
+<ol>
+<li><strong>Canonical name</strong> - this is the unique name used within the registry. By convention, end it with <code>-v&lt;N&gt;</code> so different versions can coexist.</li>
+<li><strong>Environment class</strong> — the environment class type to register.</li>
+<li><strong>Default config</strong> — the environment config to use with it.</li>
+<li><strong>Suite name</strong> (optional, keyword) - a human-readable suite category tag.</li>
+</ol>
+<p>An example with the <code>suite</code> keyword:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">envrax</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;BallEnv-v0&quot;</span><span class="p">,</span> <span class="n">BallEnv</span><span class="p">,</span> <span class="n">BallConfig</span><span class="p">(),</span> <span class="n">suite</span><span class="o">=</span><span class="s2">&quot;Ball Environments&quot;</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="register_suite"><code>register_suite()</code><a class="headerlink" href="#register_suite" title="Permanent link">&para;</a></h3>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<p><a href="../../../api/registry/registry/#envrax.registry.register_suite"><code>envrax.registry.register_suite</code></a></p>
+</details>
+<p>Once your <code>EnvSuite</code> is defined, use <code>register_suite()</code> to add all its environments to the Envrax registry in one shot:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_suite</span>
+
+<span class="n">register_suite</span><span class="p">(</span><span class="n">DemoSuite</span><span class="p">())</span>
+<span class="c1"># Registers: &quot;demo/cartpole-v0&quot;, &quot;demo/ant-v0&quot;</span>
+</code></pre></div></td></tr></table></div>
+<p>Want to override the default version? Pass in a new one with the <code>version</code> parameter:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_suite</span>
+
+<span class="n">register_suite</span><span class="p">(</span><span class="n">DemoSuite</span><span class="p">(),</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;v1&quot;</span><span class="p">)</span>
+<span class="c1"># Registers: &quot;demo/cartpole-v1&quot;, &quot;demo/ant-v1&quot;</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="utility-methods">Utility Methods<a class="headerlink" href="#utility-methods" title="Permanent link">&para;</a></h2>
+<details class="api" open="open">
+<summary>API Docs</summary>
+<ul>
+<li><a href="../../../api/registry/registry/#envrax.registry.registered_names"><code>envrax.registry.registered_names</code></a></li>
+<li><a href="../../../api/registry/registry/#envrax.registry.get_spec"><code>envrax.registry.get_spec</code></a></li>
+</ul>
+</details>
+<p>If you want to quickly verify that a <code>EnvSpec</code> or suite of environments is registered correctly, you can use one of the following:</p>
+<ul>
+<li><code>registered_names()</code> - provides a list of canonical IDs stored in the Envrax registry</li>
+<li><code>get_spec()</code> - accepts a single canonical ID and returns its <code>EnvSpec</code>, if it exists</li>
+</ul>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
+<span class="normal"> 2</span>
+<span class="normal"> 3</span>
+<span class="normal"> 4</span>
+<span class="normal"> 5</span>
+<span class="normal"> 6</span>
+<span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="n">envrax</span><span class="o">.</span><span class="n">registered_names</span><span class="p">()</span>
+<span class="c1"># [&#39;BallEnv-v0&#39;, &#39;demo/ant-v0&#39;, &#39;demo/cartpole-v0&#39;]</span>
+
+<span class="n">envrax</span><span class="o">.</span><span class="n">get_spec</span><span class="p">(</span><span class="s2">&quot;demo/cartpole-v0&quot;</span><span class="p">)</span>
+<span class="c1"># EnvSpec(</span>
+<span class="c1">#    name=&#39;demo/cartpole-v0&#39;, </span>
+<span class="c1">#    env_class=CartpoleEnv,</span>
+<span class="c1">#    default_config=CartpoleConfig(...), </span>
+<span class="c1">#    suite=&#39;Demo Suite&#39;,</span>
+<span class="c1"># )</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="when-to-register-environments">When To Register Environments<a class="headerlink" href="#when-to-register-environments" title="Permanent link">&para;</a></h2>
+<p>Environments should only ever be registered to the registry <strong>once</strong>. The single rule we recommend following:</p>
+<blockquote>
+<p><strong>One file owns registration</strong> that is then imported before using your <code>envrax.make()</code> methods.</p>
+</blockquote>
+<p>There are two flavours of this pattern depending on what you're shipping.</p>
+<h3 id="library-environment-suite">Library / Environment Suite<a class="headerlink" href="#library-environment-suite" title="Permanent link">&para;</a></h3>
+<p>Put your <code>register_suite()</code> call inside the package's <code>__init__.py</code> file. When a user imports the package, it immediately triggers registration without users having to think about it.</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># demo_envs/__init__.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">envrax</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_suite</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demo_envs.suite</span><span class="w"> </span><span class="kn">import</span> <span class="n">DemoSuite</span>
+
+<span class="n">register_suite</span><span class="p">(</span><span class="n">DemoSuite</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+<p>Now any user just needs to use <code>import demo_envs</code> once before calling an <a href="../make/"><code>envrax.make()</code></a> method and the environment suite becomes available immediately <img alt="💪" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4aa.svg" title=":muscle:" />.</p>
+<h3 id="application-research-code">Application / Research Code<a class="headerlink" href="#application-research-code" title="Permanent link">&para;</a></h3>
+<p>For projects with a small set of custom environments that don't need an <code>EnvSuite</code> (training scripts, research code, evaluation pipelines), create a dedicated <code>registry.py</code> (or <code>envs/__init__.py</code>) that imports your env classes and registers them in one place:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
+<span class="normal">2</span>
+<span class="normal">3</span>
+<span class="normal">4</span>
+<span class="normal">5</span>
+<span class="normal">6</span>
+<span class="normal">7</span>
+<span class="normal">8</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="c1"># myproject/registry.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">envrax</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">myproject.envs.ball</span><span class="w"> </span><span class="kn">import</span> <span class="n">BallEnv</span><span class="p">,</span> <span class="n">BallConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">myproject.envs.cartpole</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartpoleEnv</span><span class="p">,</span> <span class="n">CartpoleConfig</span>
+
+<span class="n">envrax</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;BallEnv-v0&quot;</span><span class="p">,</span> <span class="n">BallEnv</span><span class="p">,</span> <span class="n">BallConfig</span><span class="p">())</span>
+<span class="n">envrax</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;CartPole-v0&quot;</span><span class="p">,</span> <span class="n">CartpoleEnv</span><span class="p">,</span> <span class="n">CartpoleConfig</span><span class="p">())</span>
+</code></pre></div></td></tr></table></div>
+<p>Then every entry point - <code>train.py</code>, <code>eval.py</code>, <code>plot.py</code> - can use the same one-liner to populate the registry:</p>
+<div class="language-python highlight"><table class="highlighttable"><tr><th colspan="2" class="filename"><span class="filename">Python</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">myproject.registry</span>
+</code></pre></div></td></tr></table></div>
+<p>One symmetric entry point with minimal effort! <img alt="😄" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f604.svg" title=":smile:" /></p>
+<h3 id="what-to-avoid">What To Avoid<a class="headerlink" href="#what-to-avoid" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Registering inside functions that run repeatedly.</strong> The registry raises <code>ValueError</code> on duplicate names, so this will break your training loops.</li>
+<li><strong>Registering at the bottom of each environment file/<code>EnvSuite</code>.</strong> This works, but it spreads the catalog across <code>N</code> files, makes side-effect-free imports impossible, and is easy to break by renaming or moving a file.</li>
+<li><strong>Copy-pasting <code>register()</code> calls into every entry point.</strong> This inevitably causes environments to drift out of sync, leading to confusing "Unknown environment" errors.</li>
+</ul>
+<h2 id="common-pitfalls">Common Pitfalls<a class="headerlink" href="#common-pitfalls" title="Permanent link">&para;</a></h2>
+<p>Here are some common "gotchas" to be mindful of:</p>
+<ul>
+<li><strong><code>ValueError: Unknown environment: 'BallEnv-v0'</code></strong> - you called a <a href="../make/"><code>make()</code></a> method before the environment(s) were registered. Check your import order.</li>
+<li><strong><code>ValueError: Environment 'BallEnv-v0' is already registered</code></strong> - re-registering an existing environment. Use a different version (<code>-v1</code>) or restart the process.</li>
+</ul>
+<h2 id="recap">Recap<a class="headerlink" href="#recap" title="Permanent link">&para;</a></h2>
+<p>Phew! We've covered a lot here so let's recap:</p>
+<p><strong>The three building blocks</strong></p>
+<ul>
+<li><code>EnvSpec</code> - holds one environment's <code>name</code>, <code>env_class</code>, <code>default_config</code>, and <code>suite</code> tag. Mostly built inside an <code>EnvSuite.specs</code> list.</li>
+<li><code>EnvSuite</code> - a versioned, prefixed collection of <code>EnvSpec</code>s. Subclass it, set <code>prefix</code>/<code>category</code>/<code>version</code>/<code>required_packages</code>/<code>specs</code>.</li>
+<li><code>EnvSet</code> - groups multiple <code>EnvSuite</code> instances into one iterable. Useful when composing several benchmarks into a single heterogeneous catalog.</li>
+</ul>
+<p><strong>Useful methods on suites and sets</strong></p>
+<ul>
+<li><code>EnvSuite</code>: <code>envs</code>, <code>n_envs</code>, <code>get_name()</code>, <code>all_names()</code>, <code>check()</code>, <code>is_available()</code>, plus iteration / <code>len()</code> / slicing / <code>in</code> support.</li>
+<li><code>EnvSet</code>: <code>suites</code>, <code>n_envs</code>, <code>all_names()</code>, <code>env_categories()</code>, <code>verify_packages()</code>, plus iteration / <code>len()</code> / <code>+</code> for merging.</li>
+</ul>
+<p><strong>Registering</strong></p>
+<ul>
+<li><code>register(name, cls, default_config, suite="")</code> - adds one env to the registry. Best for prototyping or single-env projects.</li>
+<li><code>register_suite(suite)</code> - registers every spec in an <code>EnvSuite</code> under its canonical IDs in one call. The standard path for shipping benchmarks.</li>
+</ul>
+<p><strong>Introspecting</strong></p>
+<ul>
+<li><code>registered_names()</code> - provides a sorted list of every registered canonical ID.</li>
+<li><code>get_spec(name)</code> - returns the full <code>EnvSpec</code> for one environment, including its default config and suite tag.</li>
+</ul>
+<p><strong>The golden rule</strong></p>
+<p>One file owns registration. For library code, that's the package's <code>__init__.py</code>. For application code, that's a dedicated <code>registry.py</code> imported once at startup. Don't scatter <code>register()</code> calls across env files or entry points.</p>
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<p>Excellent job! You've got envs registered, now let's actually construct them. In the next tutorial we'll explore the <code>make</code> factory methods that look up registered names and hand back a fully-wired environment.</p>
+<div class="grid cards">
+<ul>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.54 22H10c-.25 0-.46-.18-.5-.42l-.37-2.65c-.63-.25-1.17-.59-1.69-.99l-2.49 1.01c-.22.08-.49 0-.61-.22l-2-3.46a.493.493 0 0 1 .12-.64l2.11-1.66L4.5 12l.07-1-2.11-1.63a.493.493 0 0 1-.12-.64l2-3.46c.12-.22.39-.31.61-.22l2.49 1c.52-.39 1.06-.73 1.69-.98l.37-2.65c.04-.24.25-.42.5-.42h4c.25 0 .46.18.5.42l.37 2.65c.63.25 1.17.59 1.69.98l2.49-1c.22-.09.49 0 .61.22l2 3.46c.13.22.07.49-.12.64L19.43 11l.07 1v.19c-.5-.12-1-.19-1.5-.19-.17 0-.34 0-.5.03 0-.62-.1-1.24-.3-1.83l2.11-1.55-.75-1.3-2.41 1.04a5.42 5.42 0 0 0-3.03-1.77L12.75 4h-1.5l-.37 2.61c-1.2.25-2.26.89-3.03 1.78L5.44 7.35l-.75 1.3L6.8 10.2a5.55 5.55 0 0 0 0 3.6l-2.12 1.56.75 1.3 2.43-1.04c.77.88 1.82 1.52 3.01 1.76l.37 2.62h1.11c.26.75.65 1.42 1.19 2m2.42-9.64c.04-.12.04-.24.04-.36 0-2.21-1.79-4-4-4s-4 1.79-4 4 1.79 4 4 4c.12 0 .24 0 .36-.04a6.05 6.05 0 0 1 3.6-3.6M12 14c-1.1 0-2-.89-2-2s.9-2 2-2 2 .9 2 2-.89 2-2 2m4 1v6l5-3z"/></svg></span> <strong>Make Methods</strong></p>
+<hr />
+<p>Learn how to use Envrax's <code>make</code> factory methods.</p>
+<p><a href="../make/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Continue to Tutorial 8</a></p>
+</li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../multi-env/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Multiple Environments">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Multiple Environments
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../make/" class="md-footer__link md-footer__link--next" aria-label="Next: Make Methods">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Make Methods
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Achronus/envrax" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/envrax" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.indexes", "navigation.top", "navigation.path", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
