@@ -1,29 +1,15 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 from typing import Any, Dict, Tuple
 
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
+from envrax.env import ActSpaceT, ConfigT, JaxEnv, StateT
 from envrax.spaces import Box
 from envrax.wrappers.base import Wrapper
+from envrax.wrappers.utils import require_box
 
 
-class NormalizeObservation(Wrapper):
+class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
     """
     Normalises pixel observations from `uint8 [0, 255]` to `float32 [0, 1]`.
 
@@ -32,68 +18,62 @@ class NormalizeObservation(Wrapper):
     Parameters
     ----------
     env : JaxEnv
-        Environment to wrap.
+        Environment to wrap. Must have a `Box` observation space with
+        dtype `uint8`.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[Box, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env)
+        require_box(env, type(self).__name__, dtype=jnp.uint8)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams) -> Tuple[chex.Array, Any]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """
         Reset and return a normalised initial observation.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            Normalised observation, float32 in [0, 1].
-        state : Any
-            Inner environment state.
+            Normalised observation in `[0, 1]`
+        state : StateT
+            Inner environment state
         """
-        obs, state = self._env.reset(rng, params)
+        obs, state = self._env.reset(rng)
         return obs.astype(jnp.float32) / jnp.float32(255.0), state
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        params: EnvParams,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """
         Step and return a normalised observation.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
-        state : Any
-            Current environment state.
+        state : StateT
+            Current environment state
         action : chex.Array
-            Action to take.
-        params : EnvParams
-            Environment parameters.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Normalised observation, float32 in [0, 1].
-        new_state : Any
-            Updated environment state.
+            Normalised observation in `[0, 1]`
+        new_state : StateT
+            Updated environment state
         reward  : chex.Array
-            Step reward.
+            Step reward
         done  : chex.Array
-            Terminal flag.
+            Terminal flag
         info : Dict[str, Any]
-            Environment metadata.
+            Environment metadata
         """
-        obs, new_state, reward, done, info = self._env.step(rng, state, action, params)
+        obs, new_state, reward, done, info = self._env.step(state, action)
         return (
             obs.astype(jnp.float32) / jnp.float32(255.0),
             new_state,

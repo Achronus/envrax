@@ -1,0 +1,129 @@
+site_name: Envrax
+site_description: Gymnasium-style API standard for RL environment creation in JAX.
+site_url: https://envrax.achronus.dev/
+
+theme:
+  name: material
+  icon:
+    logo: material/cube-outline
+    repo: fontawesome/brands/github
+  favicon: assets/imgs/favicon.svg
+  palette:
+    - scheme: slate
+      primary: green
+      accent: green
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - navigation.top
+    - navigation.path
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+strict: false
+
+repo_url: https://github.com/Achronus/envrax
+repo_name: Achronus/envrax
+edit_uri: edit/main/docs
+
+plugins:
+  - search
+  - mkdocstrings:
+      custom_templates: docs/_templates
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            docstring_options:
+              warn_unknown_params: false
+            show_source: true
+            members_order: source
+            show_root_heading: true
+            show_symbol_type_heading: true
+            extensions:
+              - docs/_extensions/docstring_polish.py:DocstringPolish
+          inventories:
+            - https://docs.python.org/3.13/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+            - https://docs.jax.dev/en/latest/objects.inv
+
+nav:
+  - Home: index.md
+  - Getting Started: 
+    - Getting Started: starting/index.md
+  - Tutorials:
+      - Tutorials: tutorials/index.md
+      - Essentials:
+          - Environment State: tutorials/essentials/state.md
+          - Spaces: tutorials/essentials/spaces.md
+          - Environment Configuration: tutorials/essentials/configuration.md
+          - Your First Environment: tutorials/essentials/first-env.md
+          - Vectorising: tutorials/essentials/vectorising.md
+          - Multiple Environments: tutorials/essentials/multi-env.md
+          - Environment Registry: tutorials/essentials/registry.md
+          - Make Methods: tutorials/essentials/make.md
+          - Available Wrappers: tutorials/essentials/wrappers.md
+          - Rendering: tutorials/essentials/rendering.md
+      - Advanced:
+          - Creating a Custom Wrapper: tutorials/advanced/custom-wrapper.md
+          - Creating a Custom Space: tutorials/advanced/custom-spaces.md
+  - API Reference:
+      - API Reference: api/index.md
+      - Environments: 
+        - Single Environment: api/env/base.md
+        - Vectorised: api/env/vec.md
+        - Multi-Environment: api/env/multi.md
+      - Spaces: api/spaces.md
+      - Wrappers: 
+        - Base Wrappers: api/wrappers/base.md
+        - Wrapper Types: api/wrappers/types.md
+        - Pass-Through Wrappers: api/wrappers/passthrough.md
+        - Stateful Wrappers: api/wrappers/stateful.md
+        - Wrapper States: api/wrappers/states.md
+        - Factory Helpers: api/wrappers/helpers.md
+      - Environment Registry: 
+        - Registry: api/registry/registry.md
+        - Suite: api/registry/suite.md
+      - Make Methods: api/make.md
+      - Error Handling: api/error.md
+  - License: license.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Achronus/envrax
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/envrax
+
+extra_css:
+  - assets/css/icons.css
+
+markdown_extensions:
+  - attr_list
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - tables
+  - md_in_html
+  - footnotes
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      pygments_lang_class: true
+      auto_title: true
+      linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+      title: Page Contents

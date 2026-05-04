@@ -1,35 +1,24 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax.numpy as jnp
 
-from envrax.base import EnvParams, JaxEnv
-from envrax.wrappers.base import Wrapper
+from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT
+from envrax.wrappers.base import InnerStateT, StatefulWrapper
 
 
 @chex.dataclass
-class EpisodeStatisticsState:
+class EpisodeStatisticsState(EnvState, Generic[InnerStateT]):
     """
     State for `RecordEpisodeStatistics`.
 
+    Generic over the inner env's state type so `env_state` is precisely
+    typed when the wrapper is parameterised. The base `rng`/`step`/`done`
+    fields are forwarded copies from the inner state.
+
     Parameters
     ----------
-    env_state : Any
+    env_state : InnerStateT
         Inner environment state.
     episode_return : chex.Array
         Cumulative reward for the current episode. float32 scalar.
@@ -37,12 +26,20 @@ class EpisodeStatisticsState:
         Number of steps taken in the current episode. int32 scalar.
     """
 
-    env_state: Any
+    env_state: InnerStateT
     episode_return: chex.Array
     episode_length: chex.Array
 
 
-class RecordEpisodeStatistics(Wrapper):
+class RecordEpisodeStatistics(
+    StatefulWrapper[
+        ObsSpaceT,
+        ActSpaceT,
+        EpisodeStatisticsState[InnerStateT],
+        ConfigT,
+        InnerStateT,
+    ]
+):
     """
     Records episode return and length.
 
@@ -56,31 +53,32 @@ class RecordEpisodeStatistics(Wrapper):
         Environment to wrap.
     """
 
-    def __init__(self, env: JaxEnv) -> None:
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT]) -> None:
         super().__init__(env)
 
     def reset(
-        self, rng: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EpisodeStatisticsState]:
+        self, rng: chex.PRNGKey
+    ) -> Tuple[chex.Array, EpisodeStatisticsState[InnerStateT]]:
         """
         Reset the environment and episode accumulators.
 
         Parameters
         ----------
         rng : chex.PRNGKey
-            JAX PRNG key.
-        params : EnvParams
-            Environment parameters.
+            JAX PRNG key
 
         Returns
         -------
         obs  : chex.Array
-            Initial observation.
+            Initial observation
         state : EpisodeStatisticsState
-            Initial state with zeroed accumulators.
+            Initial state with zeroed accumulators
         """
-        obs, env_state = self._env.reset(rng, params)
+        obs, env_state = self._env.reset(rng)
         state = EpisodeStatisticsState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
             env_state=env_state,
             episode_return=jnp.float32(0.0),
             episode_length=jnp.int32(0),
@@ -89,42 +87,40 @@ class RecordEpisodeStatistics(Wrapper):
 
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: EpisodeStatisticsState,
+        state: EpisodeStatisticsState[InnerStateT],
         action: chex.Array,
-        params: EnvParams,
-    ) -> Tuple[chex.Array, EpisodeStatisticsState, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[
+        chex.Array,
+        EpisodeStatisticsState[InnerStateT],
+        chex.Array,
+        chex.Array,
+        Dict[str, Any],
+    ]:
         """
         Step the environment and update episode accumulators.
 
         Parameters
         ----------
-        rng : chex.PRNGKey
-            JAX PRNG key.
         state : EpisodeStatisticsState
-            Current state.
+            Current state
         action : chex.Array
-            Action to take.
-        params : EnvParams
-            Environment parameters.
+            Action to take in the environment
 
         Returns
         -------
         obs  : chex.Array
-            Next observation.
+            Next observation
         new_state : EpisodeStatisticsState
-            Updated state.
+            Updated state
         reward  : chex.Array
-            Step reward.
+            Step reward
         done  : chex.Array
-            Episode terminal flag.
+            Episode terminal flag
         info : Dict[str, Any]
             Environment metadata extended with `"episode"`:
-            `{"r": float32, "l": int32}` — non-zero only when `done=True`.
+            `{"r": float32, "l": int32}` — non-zero only when `done=True`
         """
-        obs, env_state, reward, done, info = self._env.step(
-            rng, state.env_state, action, params
-        )
+        obs, env_state, reward, done, info = self._env.step(state.env_state, action)
 
         episode_return = state.episode_return + reward.astype(jnp.float32)
         episode_length = state.episode_length + jnp.int32(1)
@@ -135,8 +131,11 @@ class RecordEpisodeStatistics(Wrapper):
         }
 
         new_state = EpisodeStatisticsState(
+            rng=env_state.rng,
+            step=env_state.step,
+            done=env_state.done,
             env_state=env_state,
-            episode_return=jnp.where(done, jnp.float32(0.0), episode_return),
+            episode_return=jnp.where(done, jnp.float32(0.0), episode_return),  # pyright: ignore[reportArgumentType]
             episode_length=jnp.where(done, jnp.int32(0), episode_length),
         )
         return obs, new_state, reward, done, info

@@ -1,25 +1,12 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 from abc import abstractmethod
-from typing import Any, Dict, Self, Tuple, overload
+from typing import Any, Dict, Generic, Self, Tuple, Type, TypeVar, overload
 
 import chex
+import numpy as np
 
-from envrax.base import EnvParams, EnvState, JaxEnv
-from envrax.spaces import Box, Discrete
+from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT, StateT
+
+InnerStateT = TypeVar("InnerStateT", bound=EnvState)
 
 
 class _WrapperFactory:
@@ -60,12 +47,17 @@ class _WrapperFactory:
         return self._cls(env, **self._kwargs)
 
 
-class Wrapper(JaxEnv):
+class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
-    Abstract base class for JaxEnv wrappers.
+    Abstract base class for pass-through JaxEnv wrappers.
 
-    Subclasses must implement `reset` and `step` with the JaxEnv API
-    signatures: `reset(rng, params)` and `step(rng, state, action, params)`.
+    Pass-through wrappers preserve the inner env's state type unchanged.
+    They declare four TypeVars:
+
+        class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]): ...
+
+    For wrappers that introduce their own outer state type wrapping the
+    inner state, use `StatefulWrapper` instead.
 
     The `observation_space` and `action_space` properties delegate to the
     inner environment by default and may be overridden when the wrapper
@@ -94,27 +86,24 @@ class Wrapper(JaxEnv):
             return factory
         return super().__new__(cls)
 
-    def __init__(self, env: JaxEnv) -> None:
-        self._env = env
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]) -> None:
+        super().__init__(env.config)
+        self._env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT] = env
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}<{self._env!r}>"
 
     @abstractmethod
-    def reset(
-        self, rng: chex.PRNGKey, params: EnvParams
-    ) -> Tuple[chex.Array, EnvState]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
         """Reset the environment and return the initial observation and state."""
         raise NotImplementedError()
 
     @abstractmethod
     def step(
         self,
-        rng: chex.PRNGKey,
-        state: Any,
+        state: StateT,
         action: chex.Array,
-        params: EnvParams,
-    ) -> Tuple[chex.Array, Any, chex.Array, chex.Array, Dict[str, Any]]:
+    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
         """Advance the environment by one step."""
         raise NotImplementedError()
 
@@ -123,12 +112,55 @@ class Wrapper(JaxEnv):
         """Return the innermost `JaxEnv` by delegating through the wrapper chain."""
         return self._env.unwrapped if isinstance(self._env, Wrapper) else self._env
 
+    def render(self, state: StateT, **kwargs: Any) -> np.ndarray:
+        """Forward render to the inner environment."""
+        return self._env.render(state, **kwargs)
+
     @property
-    def observation_space(self) -> Box:
+    def observation_space(self) -> ObsSpaceT:
         """Observation space of the inner environment."""
         return self._env.observation_space
 
     @property
-    def action_space(self) -> Discrete:
+    def action_space(self) -> ActSpaceT:
         """Action space of the inner environment."""
         return self._env.action_space
+
+
+class StatefulWrapper(
+    Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT],
+    Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT, InnerStateT],
+):
+    """
+    Abstract base class for stateful JaxEnv wrappers.
+
+    Stateful wrappers introduce their own outer state type that wraps the
+    inner env's state. They declare five TypeVars — pinning `StateT` to
+    their wrapper-specific class and leaving `InnerStateT` parametric:
+
+        class FrameStackObservation(
+            StatefulWrapper[Box, ActSpaceT, FrameStackState[InnerStateT], ConfigT, InnerStateT]
+        ): ...
+
+    For wrappers that preserve the inner state unchanged, use `Wrapper`
+    instead.
+
+    Parameters
+    ----------
+    env : JaxEnv
+        Inner environment to wrap.
+    """
+
+    def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT]) -> None:
+        JaxEnv.__init__(self, env.config)
+        self._env: JaxEnv[ObsSpaceT, ActSpaceT, InnerStateT, ConfigT] = env  # type: ignore[assignment]
+
+
+type WrapperType = Type[Wrapper] | _WrapperFactory
+"""
+A wrapper supplied to factory functions like `make()`.
+
+Either a `Wrapper` subclass (applied directly to an env) or a deferred
+factory returned by calling a parameterised wrapper class without an env
+(e.g. `ResizeObservation(h=84, w=84)`).
+"""

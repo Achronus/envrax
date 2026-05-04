@@ -1,21 +1,13 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+from typing import TYPE_CHECKING, Any
 
 import chex
 import jax
 import jax.numpy as jnp
+
+from envrax.spaces import Box
+
+if TYPE_CHECKING:
+    from envrax.env import JaxEnv
 
 _LUMA = jnp.array([0.299, 0.587, 0.114], dtype=jnp.float32)
 
@@ -33,3 +25,67 @@ def resize(obs: chex.Array, out_h: int, out_w: int) -> chex.Array:
         shape = (out_h, out_w)
     resized = jax.image.resize(obs.astype(jnp.float32), shape, method="bilinear")
     return resized.astype(jnp.uint8)
+
+
+def require_box(
+    env: "JaxEnv",
+    wrapper_name: str,
+    *,
+    rank: int | tuple[int, ...] | None = None,
+    last_dim: int | None = None,
+    dtype: Any = None,
+) -> Box:
+    """
+    Validate that `env.observation_space` is a `Box` matching the given constraints.
+
+    Used by image-processing wrappers to fail fast at construction time
+    instead of producing cryptic errors on the first `reset`.
+
+    Parameters
+    ----------
+    env : JaxEnv
+        Environment whose observation space is being validated
+    wrapper_name : str
+        Name of the wrapper performing the check (used in error messages)
+    rank : int | tuple[int, ...] (optional)
+        Required rank of the observation. A tuple permits multiple ranks
+    last_dim : int (optional)
+        Required size of the trailing dimension (e.g. `3` for RGB)
+    dtype : Any (optional)
+        Required element dtype (e.g. `jnp.uint8`)
+
+    Returns
+    -------
+    space : Box
+        The validated observation space
+
+    Raises
+    ------
+    TypeError
+        If the observation space is not a `Box`
+    ValueError
+        If any rank/last_dim/dtype constraint fails
+    """
+    space = env.observation_space
+    if not isinstance(space, Box):
+        raise TypeError(
+            f"{wrapper_name} requires a Box observation space, "
+            f"got {type(space).__name__}"
+        )
+    if rank is not None:
+        allowed = (rank,) if isinstance(rank, int) else rank
+        if len(space.shape) not in allowed:
+            raise ValueError(
+                f"{wrapper_name} requires observation rank in {allowed}, "
+                f"got shape {space.shape}"
+            )
+    if last_dim is not None and space.shape[-1] != last_dim:
+        raise ValueError(
+            f"{wrapper_name} requires last dim = {last_dim}, got shape {space.shape}"
+        )
+    if dtype is not None and space.dtype != dtype:
+        raise ValueError(
+            f"{wrapper_name} requires {jnp.dtype(dtype).name} dtype, "
+            f"got {jnp.dtype(space.dtype).name}"
+        )
+    return space

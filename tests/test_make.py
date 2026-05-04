@@ -1,18 +1,3 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 """Tests for the envrax make() factory functions.
 
 Run with:
@@ -24,12 +9,14 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from envrax.base import EnvParams, EnvState, JaxEnv
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.make import make, make_multi, make_multi_vec, make_vec
+from envrax.multi_env import MultiEnv
+from envrax.multi_vec_env import MultiVecEnv
 from envrax.registry import _REGISTRY, register
 from envrax.spaces import Box, Discrete
-from envrax.wrappers import GrayscaleObservation, JitWrapper, VmapEnv
-
+from envrax.vec_env import VecEnv
+from envrax.wrappers import GrayscaleObservation, JitWrapper
 
 # ---------------------------------------------------------------------------
 # Minimal concrete env for testing
@@ -41,7 +28,7 @@ class _PixState(EnvState):
     pass
 
 
-class _PixEnv(JaxEnv):
+class _PixEnv(JaxEnv[Box, Discrete, _PixState, EnvConfig]):
     """Minimal env returning uint8[8, 8, 3] RGB observations."""
 
     @property
@@ -52,23 +39,23 @@ class _PixEnv(JaxEnv):
     def action_space(self) -> Discrete:
         return Discrete(n=4)
 
-    def reset(self, rng: chex.PRNGKey, params: EnvParams):
+    def reset(self, rng: chex.PRNGKey):
         obs = jnp.full((8, 8, 3), 128, dtype=jnp.uint8)
-        state = _PixState(step=jnp.int32(0), done=jnp.bool_(False))
+        state = _PixState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
         return obs, state
 
-    def step(self, rng, state, action, params):
+    def step(self, state, action):
         obs = jnp.full((8, 8, 3), 64, dtype=jnp.uint8)
-        new_state = state.replace(
+        new_state = state.__replace__(
             step=state.step + 1,
-            done=jnp.bool_(state.step + 1 >= params.max_steps),
+            done=jnp.bool_(state.step + 1 >= self.config.max_steps),
         )
         reward = jnp.float32(1.0)
         return obs, new_state, reward, new_state.done, {}
 
 
-_RNG = jax.random.PRNGKey(0)
-_PARAMS = EnvParams(max_steps=10)
+_RNG = jax.random.key(0)
+_CONFIG = EnvConfig(max_steps=10)
 _ENV_NAME = "TestPixEnv-v0"
 
 
@@ -81,7 +68,7 @@ _ENV_NAME = "TestPixEnv-v0"
 def _register_and_cleanup():
     """Register the test env before each test and clean up after."""
     _REGISTRY.pop(_ENV_NAME, None)
-    register(_ENV_NAME, _PixEnv, _PARAMS)
+    register(_ENV_NAME, _PixEnv, _CONFIG)
     yield
     _REGISTRY.pop(_ENV_NAME, None)
 
@@ -92,53 +79,53 @@ def _register_and_cleanup():
 
 
 class TestMake:
-    def test_returns_tuple(self):
-        env, params = make(_ENV_NAME, jit_compile=False)
+    def test_returns_env(self):
+        env = make(_ENV_NAME, jit_compile=False)
         assert isinstance(env, _PixEnv)
-        assert isinstance(params, EnvParams)
+        assert isinstance(env.config, EnvConfig)
 
     def test_unknown_name_raises(self):
         with pytest.raises(ValueError, match="Unknown environment"):
             make("DoesNotExist-v0")
 
-    def test_custom_params(self):
-        custom = EnvParams(max_steps=500)
-        _, params = make(_ENV_NAME, params=custom, jit_compile=False)
-        assert params.max_steps == 500
+    def test_custom_config(self):
+        custom = EnvConfig(max_steps=500)
+        env = make(_ENV_NAME, config=custom, jit_compile=False)
+        assert env.config.max_steps == 500
 
-    def test_default_params_from_registry(self):
-        _, params = make(_ENV_NAME, jit_compile=False)
-        assert params.max_steps == _PARAMS.max_steps
+    def test_default_config_from_registry(self):
+        env = make(_ENV_NAME, jit_compile=False)
+        assert env.config.max_steps == _CONFIG.max_steps
 
     def test_reset_shape(self):
-        env, params = make(_ENV_NAME, jit_compile=False)
-        obs, _ = env.reset(_RNG, params)
+        env = make(_ENV_NAME, jit_compile=False)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8, 3))
 
     def test_step_shape(self):
-        env, params = make(_ENV_NAME, jit_compile=False)
-        _, state = env.reset(_RNG, params)
-        obs, _, reward, done, _ = env.step(_RNG, state, jnp.int32(0), params)
+        env = make(_ENV_NAME, jit_compile=False)
+        _, state = env.reset(_RNG)
+        obs, _, reward, done, _ = env.step(state, jnp.int32(0))
         chex.assert_shape(obs, (8, 8, 3))
         chex.assert_rank(reward, 0)
         chex.assert_rank(done, 0)
 
     def test_wrappers_applied(self):
-        env, _ = make(_ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False)
+        env = make(_ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False)
         assert isinstance(env, GrayscaleObservation)
 
     def test_wrapper_changes_obs_shape(self):
-        env, params = make(_ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False)
-        obs, _ = env.reset(_RNG, params)
+        env = make(_ENV_NAME, wrappers=[GrayscaleObservation], jit_compile=False)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8))
 
     def test_jit_compile_returns_jit_wrapper(self):
-        env, _ = make(_ENV_NAME, jit_compile=True)
+        env = make(_ENV_NAME, jit_compile=True)
         assert isinstance(env, JitWrapper)
 
     def test_jit_compile_reset_works(self):
-        env, params = make(_ENV_NAME, jit_compile=True)
-        obs, _ = env.reset(_RNG, params)
+        env = make(_ENV_NAME, jit_compile=True)
+        obs, _ = env.reset(_RNG)
         chex.assert_shape(obs, (8, 8, 3))
 
 
@@ -148,30 +135,35 @@ class TestMake:
 
 
 class TestMakeVec:
-    def test_returns_vmap_env(self):
-        vec_env, _ = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        assert isinstance(vec_env, VmapEnv)
+    def test_returns_vec_env(self):
+        vec_env = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
+        assert isinstance(vec_env, VecEnv)
         assert vec_env.num_envs == 4
 
     def test_reset_shape(self):
-        vec_env, params = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        obs, _ = vec_env.reset(_RNG, params)
+        vec_env = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
+        obs, _ = vec_env.reset(jax.random.key(0))
         chex.assert_shape(obs, (4, 8, 8, 3))
 
     def test_step_shape(self):
-        vec_env, params = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
-        _, states = vec_env.reset(_RNG, params)
-        obs, _, rewards, dones, _ = vec_env.step(
-            _RNG, states, jnp.zeros(4, dtype=jnp.int32), params
-        )
+        vec_env = make_vec(_ENV_NAME, n_envs=4, jit_compile=False)
+        _, states = vec_env.reset(jax.random.key(0))
+        obs, _, rewards, dones, _ = vec_env.step(states, jnp.zeros(4, dtype=jnp.int32))
         chex.assert_shape(obs, (4, 8, 8, 3))
         chex.assert_shape(rewards, (4,))
         chex.assert_shape(dones, (4,))
 
-    def test_custom_params(self):
-        custom = EnvParams(max_steps=200)
-        _, params = make_vec(_ENV_NAME, n_envs=2, params=custom, jit_compile=False)
-        assert params.max_steps == 200
+    def test_custom_config(self):
+        custom = EnvConfig(max_steps=200)
+        vec_env = make_vec(_ENV_NAME, n_envs=2, config=custom, jit_compile=False)
+        assert vec_env.config.max_steps == 200
+
+    def test_pre_warm_compiles_and_runs(self):
+        # jit_compile + pre_warm (the defaults) — exercises vec.compile() path
+        vec_env = make_vec(_ENV_NAME, n_envs=4, jit_compile=True, pre_warm=True)
+        assert isinstance(vec_env, VecEnv)
+        obs, _ = vec_env.reset(jax.random.key(0))
+        chex.assert_shape(obs, (4, 8, 8, 3))
 
 
 # ---------------------------------------------------------------------------
@@ -180,16 +172,20 @@ class TestMakeVec:
 
 
 class TestMakeMulti:
-    def test_returns_list_of_tuples(self):
-        results = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
-        assert len(results) == 2
-        for env, params in results:
-            assert isinstance(env, _PixEnv)
-            assert isinstance(params, EnvParams)
+    def test_returns_multi_env(self):
+        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
+        assert isinstance(multi, MultiEnv)
+        assert multi.num_envs == 2
 
-    def test_empty_list_returns_empty(self):
-        results = make_multi([], jit_compile=False)
-        assert results == []
+    def test_envs_are_correct_type(self):
+        multi = make_multi([_ENV_NAME], jit_compile=False)
+        assert isinstance(multi.envs[0], _PixEnv)
+
+    def test_reset_works(self):
+        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
+        obs_list, _ = multi.reset(_RNG)
+        assert len(obs_list) == 2
+        assert obs_list[0].shape == (8, 8, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -198,9 +194,25 @@ class TestMakeMulti:
 
 
 class TestMakeMultiVec:
-    def test_returns_list_of_vmap_envs(self):
-        results = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
-        assert len(results) == 2
-        for vec_env, params in results:
-            assert isinstance(vec_env, VmapEnv)
-            assert vec_env.num_envs == 2
+    def test_returns_multi_vec_env(self):
+        multi = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
+        assert isinstance(multi, MultiVecEnv)
+        assert multi.num_envs == 2
+
+    def test_vec_envs_are_correct(self):
+        multi = make_multi_vec([_ENV_NAME], n_envs=4, jit_compile=False)
+        assert isinstance(multi.vec_envs[0], VecEnv)
+        assert multi.vec_envs[0].num_envs == 4
+        assert multi.total_envs == 4
+
+    def test_pre_warm_compiles_each_vec(self):
+        # pre_warm defaults to False here — explicitly enable to hit compile() path
+        multi = make_multi_vec(
+            [_ENV_NAME, _ENV_NAME],
+            n_envs=2,
+            jit_compile=True,
+            pre_warm=True,
+        )
+        assert isinstance(multi, MultiVecEnv)
+        obs_list, _ = multi.reset(jax.random.key(0))
+        chex.assert_shape(obs_list[0], (2, 8, 8, 3))

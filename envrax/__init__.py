@@ -1,24 +1,12 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
-from envrax.base import EnvParams, EnvState, JaxEnv
-from envrax.envs import EnvGroup, EnvSet
+from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.error import MissingPackageError
 from envrax.make import make, make_multi, make_multi_vec, make_vec
-from envrax.registry import make_env, register, registered_names
-from envrax.spaces import Box, Discrete, Space
+from envrax.multi_env import MultiEnv
+from envrax.multi_vec_env import MultiVecEnv
+from envrax.registry import get_spec, register, register_suite, registered_names
+from envrax.spaces import Box, Discrete, MultiDiscrete, Space
+from envrax.suite import EnvSet, EnvSpec, EnvSuite
+from envrax.vec_env import VecEnv
 from envrax.wrappers import (
     ClipReward,
     EpisodeDiscount,
@@ -32,7 +20,7 @@ from envrax.wrappers import (
     RecordEpisodeStatistics,
     RecordVideo,
     ResizeObservation,
-    VmapEnv,
+    StatefulWrapper,
     Wrapper,
 )
 
@@ -40,10 +28,12 @@ __all__ = [
     "Box",
     "ClipReward",
     "Discrete",
-    "EnvGroup",
-    "EnvParams",
+    "MultiDiscrete",
+    "EnvConfig",
     "EnvSet",
+    "EnvSpec",
     "EnvState",
+    "EnvSuite",
     "EpisodeDiscount",
     "MissingPackageError",
     "EpisodeStatisticsState",
@@ -53,18 +43,22 @@ __all__ = [
     "GrayscaleObservation",
     "JaxEnv",
     "JitWrapper",
+    "MultiEnv",
+    "MultiVecEnv",
     "NormalizeObservation",
     "RecordEpisodeStatistics",
     "RecordVideo",
     "ResizeObservation",
     "Space",
-    "VmapEnv",
+    "StatefulWrapper",
+    "VecEnv",
     "Wrapper",
+    "get_spec",
     "make",
-    "make_env",
     "make_multi",
     "make_multi_vec",
     "make_vec",
     "register",
+    "register_suite",
     "registered_names",
 ]

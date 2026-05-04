@@ -1,40 +1,33 @@
-# Copyright 2026 Achronus
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+from typing import Dict, List, Type
 
-from typing import Dict, List, Tuple, Type
+from envrax.env import EnvConfig, JaxEnv
+from envrax.suite import EnvSpec, EnvSuite
 
-from envrax.base import EnvParams, JaxEnv
-
-_REGISTRY: Dict[str, Tuple[Type[JaxEnv], EnvParams]] = {}
+_REGISTRY: Dict[str, EnvSpec] = {}
 
 
-def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> None:
+def register(
+    name: str,
+    env_class: Type[JaxEnv],
+    default_config: EnvConfig,
+    *,
+    suite: str = "",
+) -> None:
     """
     Register an environment class under a given name.
 
-    Called on package import by downstream packages (atarax, proxen, labrax)
-    to make their environments available via `envrax.make()`.
+    Makes the environment available via `envrax.make()` methods.
 
     Parameters
     ----------
     name : str
-        Unique environment name (e.g. `"atari/breakout-v0"`).
+        Unique environment name (e.g. `"mjx/cartpole-v0"`).
     env_class : Type[JaxEnv]
         The environment class to register.
-    default_params : EnvParams
-        Default parameters for this environment.
+    default_config : EnvConfig
+        Default configuration for this environment.
+    suite : str (optional)
+        Suite category tag for introspection (e.g. `"MuJoCo Playground"`).
 
     Raises
     ------
@@ -46,47 +39,81 @@ def register(name: str, env_class: Type[JaxEnv], default_params: EnvParams) -> N
             f"Environment {name!r} is already registered. "
             "Use a unique name or unregister the existing entry first."
         )
-    _REGISTRY[name] = (env_class, default_params)
+
+    _REGISTRY[name] = EnvSpec(
+        name=name,
+        env_class=env_class,
+        default_config=default_config,
+        suite=suite,
+    )
 
 
-def make_env(name: str, **param_overrides) -> Tuple[JaxEnv, EnvParams]:
+def register_suite(suite: EnvSuite, *, version: str | None = None) -> None:
     """
-    Create a bare environment instance by name (no JIT, no wrappers).
-
-    For JIT compilation and wrapper support use `envrax.make()` instead.
+    Register every environment in an `EnvSuite` in one shot.
 
     Parameters
     ----------
-    name : str
-        Registered environment name (e.g. `"atari/breakout-v0"`).
-    **param_overrides
-        Keyword arguments forwarded to `EnvParams.__replace__()` to override
-        individual default parameters.
-
-    Returns
-    -------
-    env : JaxEnv
-        Instantiated environment.
-    params : EnvParams
-        Resolved parameters (defaults merged with any overrides).
+    suite : EnvSuite
+        The suite whose environments should be registered.
+    version : str (optional)
+        Override the suite's default version when computing canonical IDs.
 
     Raises
     ------
     env_exists : ValueError
+        If any resulting canonical ID is already registered.
+    """
+    for spec in suite.specs:
+        canonical = suite.get_name(spec.name, version)
+
+        if canonical in _REGISTRY:
+            raise ValueError(
+                f"Environment {canonical!r} is already registered. "
+                "Use a unique name or unregister the existing entry first."
+            )
+
+        _REGISTRY[canonical] = EnvSpec(
+            name=canonical,
+            env_class=spec.env_class,
+            default_config=spec.default_config,
+            suite=suite.category,
+        )
+
+
+def get_spec(name: str) -> EnvSpec:
+    """
+    Return the full `EnvSpec` for a registered environment.
+
+    Parameters
+    ----------
+    name : str
+        Registered environment name.
+
+    Returns
+    -------
+    spec : EnvSpec
+        The registered specification.
+
+    Raises
+    ------
+    unknown_env : ValueError
         If `name` is not registered.
     """
     if name not in _REGISTRY:
-        available = sorted(_REGISTRY)
+        available = sorted(_REGISTRY.keys())
         raise ValueError(f"Unknown environment: {name!r}. Available: {available}")
-    env_class, default_params = _REGISTRY[name]
-    params = (
-        default_params.__replace__(**param_overrides)
-        if param_overrides
-        else default_params
-    )
-    return env_class(), params
+
+    return _REGISTRY[name]
 
 
 def registered_names() -> List[str]:
-    """Return a sorted list of all registered environment names."""
-    return sorted(_REGISTRY)
+    """
+    Get a sorted list of all registered environments.
+
+    Returns
+    -------
+    envs : List[str]
+        List of environment canonical IDs stored in the registry.
+    """
+    return sorted(_REGISTRY.keys())
