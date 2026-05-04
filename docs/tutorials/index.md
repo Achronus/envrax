@@ -54,4 +54,3 @@ Each tutorial is a task-focused guide for specific features. These can be read i
 | - | --- | --- |
 | 1 | [Creating a Custom Wrapper](advanced/custom-wrapper.md) | Build your own pass-through and stateful wrappers |
 | 2 | [Creating a Custom Space](advanced/custom-spaces.md) | Subclass `Space` to create your own spaces that Envrax doesn't ship. |
-| 3 | [Debugging JIT'd Environments](advanced/debugging.md) | Trace-aware logging, in-JIT assertions, and the `info`-channel pattern for observing what your env actually does |

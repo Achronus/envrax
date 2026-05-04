@@ -71,7 +71,6 @@ nav:
       - Advanced:
           - Creating a Custom Wrapper: tutorials/advanced/custom-wrapper.md
           - Creating a Custom Space: tutorials/advanced/custom-spaces.md
-          - Debugging JIT'd Environments: tutorials/advanced/debugging.md
   - API Reference:
       - API Reference: api/index.md
       - Environments: 
