@@ -3,7 +3,6 @@ from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax
-import jax.numpy as jnp
 import numpy as np
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
@@ -164,9 +163,13 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
             XLA cache directory. Defaults to `~/.cache/envrax/xla_cache`.
         """
         setup_cache(cache_dir)
+
         _key = jax.random.key(0)
         _, _state = self.reset(_key)
-        self.step(_state, jnp.zeros(self.num_envs, dtype=jnp.int32))
+        _action_rngs = jax.random.split(_key, self.num_envs)
+        _dummy_actions = jax.vmap(self.env.action_space.sample)(_action_rngs)
+
+        self.step(_state, _dummy_actions)
 
     @property
     def single_observation_space(self) -> ObsSpaceT:
