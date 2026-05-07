@@ -1,6 +1,6 @@
 [project]
 name = "envrax"
-version = "0.1.4"
+version = "0.1.5"
 description = "Gymnasium-style API standard for RL environment creation in JAX."
 authors = [{ name = "Ryan Partridge", email = "codemonkey37@proton.me" }]
 readme = "README.md"
