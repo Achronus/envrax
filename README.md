@@ -490,8 +490,8 @@ vec_env.compile()  # warm up the vmapped reset + step
 | Symbol | Description |
 | --- | --- |
 | `EnvSpec(name, env_class, default_config, suite="")` | Frozen dataclass — the unit of registration. Stored in the registry under its canonical name. |
-| `EnvSuite` | Base class for declaring a suite of environments. Subclasses pin `prefix`, `category`, `version`, `required_packages`, and a `specs: List[EnvSpec]`. Override `get_name()` to produce canonical IDs. |
-| `EnvSet(*suites)` | Collection of `EnvSuite` instances. Supports `+`, iteration, and `verify_packages()`. |
+| `EnvSuite` | Base class for declaring a suite of environments. Subclasses pin `prefix`, `category`, `version`, `required_packages`, and a `specs: List[EnvSpec]`. Override `get_name()` to produce canonical IDs. Exposes `pad_dims()` for the max `(action, observation)` flat sizes across the suite. |
+| `EnvSet(*suites)` | Collection of `EnvSuite` instances. Supports `+`, iteration, `verify_packages()`, `pad_dims()`, and `from_names()` for rebuilding from persisted canonical IDs. |
 | `register(name, cls, default_config, *, suite="")` | Register a single `JaxEnv` under a name. Builds an `EnvSpec` internally. |
 | `register_suite(suite, *, version=None)` | Register every spec in an `EnvSuite` under its canonical IDs. |
 | `get_spec(name)` | Return the full registered `EnvSpec` for an environment. |

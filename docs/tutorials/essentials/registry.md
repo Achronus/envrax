@@ -143,6 +143,18 @@ suite.check()         # {'demo_envs': True}
 suite.is_available()  # True
 ```
 
+#### `pad_dims()`
+
+Returns the largest flat action and observation sizes across every environment in the suite as an `(action, observation)` tuple.
+
+This is useful when you want to `vmap` a single jitted function over environments that don't share the same action or observation shapes, specifically, in multi-environment cases:
+
+```python
+action, observation = suite.pad_dims()  # e.g. (5, 192)
+```
+
+One thing to watch out for: spaces without a `.shape` attribute (e.g. `Discrete`) will raise a `TypeError`. If you mix `Box` and `Discrete` environments in one suite, handle them separately or wrap them so they expose a consistent shape.
+
 #### Iteration, length, slicing, and membership
 
 `EnvSuite` also comes with a standard collection of magic methods so it can behave just like a Python sequence of canonical IDs:
@@ -219,6 +231,32 @@ Unlike `EnvSuite.is_available()`, this one **raises** `MissingPackageError` list
 # raises MissingPackageError if any packages are missing
 catalog.verify_packages()
 ```
+
+#### `pad_dims()`
+
+Aggregates `EnvSuite.pad_dims()` across **every** suite and returns the maximum `(action, observation)` tuple needed to fit any environment in the catalog:
+
+```python
+action, observation = catalog.pad_dims()  # e.g. (5, 192)
+```
+
+Just like the suite-level method, sizes are computed as `prod(space.shape)`, so multi-dim observations are handled correctly. Spaces without a `.shape` attribute will raise a `TypeError`.
+
+#### `from_names()`
+
+A classmethod for **reconstructing** an `EnvSet` from a list of canonical IDs already known to the registry:
+
+```python
+from envrax import EnvSet
+
+names = ["mjx/cartpole-v0", "mjx/ant-v0", "other/foo-v0"]
+catalog = EnvSet.from_names(names)
+
+catalog.env_categories()  # {'MuJoCo Playground': 2, 'Other Suite': 1}
+list(catalog)             # ['mjx/cartpole-v0', 'mjx/ant-v0', 'other/foo-v0']
+```
+
+The resulting set groups specs by their suite `category` tag, one internal suite per category. Any name that isn't registered raises a `ValueError` from [`get_spec()`](#utility-methods).
 
 #### Iteration, length, and merging
 
@@ -394,8 +432,8 @@ Phew! We've covered a lot here so let's recap:
 
 **Useful methods on suites and sets**
 
-- `EnvSuite`: `envs`, `n_envs`, `get_name()`, `all_names()`, `check()`, `is_available()`, plus iteration / `len()` / slicing / `in` support.
-- `EnvSet`: `suites`, `n_envs`, `all_names()`, `env_categories()`, `verify_packages()`, plus iteration / `len()` / `+` for merging.
+- `EnvSuite`: `envs`, `n_envs`, `get_name()`, `all_names()`, `check()`, `is_available()`, `pad_dims()`, plus iteration / `len()` / slicing / `in` support.
+- `EnvSet`: `suites`, `n_envs`, `all_names()`, `env_categories()`, `verify_packages()`, `pad_dims()`, `from_names()`, plus iteration / `len()` / `+` for merging.
 
 **Registering**
 
