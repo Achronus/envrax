@@ -186,6 +186,9 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# JAX compilation cache
+.jax_cache/
+
 # PyPI configuration file
 .pypirc
 
