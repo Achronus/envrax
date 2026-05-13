@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from envrax._compile import DEFAULT_CACHE_DIR
+from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
 from envrax.env import EnvConfig, JaxEnv
 from envrax.multi_env import MultiEnv
 from envrax.multi_vec_env import MultiVecEnv
@@ -40,7 +40,8 @@ def make(
         to the first real call or an explicit `compile()`. Default is `True`.
     cache_dir : Path | str | None (optional)
         Directory for the persistent XLA compilation cache.
-        Defaults to `~/.cache/envrax/xla_cache`. Pass `None` to disable.
+        Defaults to `<cwd>/.jax_cache` (override with the
+        `ENVRAX_CACHE_DIR` environment variable). Pass `None` to disable.
 
     Returns
     -------
@@ -107,6 +108,9 @@ def make_vec(
     vec_env : VecEnv
         Vectorised environment.
     """
+    if jit_compile:
+        setup_cache(cache_dir)
+
     inner_env = make(
         name,
         config=config,
@@ -219,6 +223,9 @@ def make_multi_vec(
     multi_vec_env : MultiVecEnv
         Manager holding all M vectorised environments
     """
+    if jit_compile:
+        setup_cache(cache_dir)
+
     vec_envs = []
     for name in names:
         inner = make(

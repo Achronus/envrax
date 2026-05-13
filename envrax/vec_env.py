@@ -160,7 +160,7 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         Parameters
         ----------
         cache_dir : Path | str | None (optional)
-            XLA cache directory. Defaults to `~/.cache/envrax/xla_cache`.
+            XLA cache directory. Defaults to `<cwd>/.jax_cache`.
         """
         setup_cache(cache_dir)
 

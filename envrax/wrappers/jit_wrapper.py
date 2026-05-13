@@ -20,7 +20,7 @@ class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         Environment to wrap.
     cache_dir : Path | str | None (optional)
         Directory for the persistent XLA compilation cache.
-        Defaults to `~/.cache/envrax/xla_cache`. Pass `None` to disable.
+        Defaults to `<cwd>/.jax_cache`. Pass `None` to disable.
     pre_warm : bool (optional)
         Run a dummy `reset` + `step` immediately to trigger XLA compilation.
         Set to `False` to defer compilation to the first real call or an
