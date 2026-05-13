@@ -484,6 +484,10 @@ vec_env.compile()  # warm up the vmapped reset + step
 | `MultiVecEnv(vec_envs)` | Manages M heterogeneous `VecEnv` instances. Same API as `MultiEnv`, but each element is already batched. |
 | `.compile(progress=True)` | Trigger XLA compilation for all inner envs/VecEnvs with an optional `tqdm` progress bar. |
 | `.class_groups` | `Dict[str, List[int]]` — env class name to indices, for downstream same-class batching. |
+| `.observation_shapes` / `.action_shapes` (MultiEnv) / `.single_observation_shapes` / `.single_action_shapes` (MultiVecEnv) | Per-env shapes as `List[Tuple[int, ...]]`. |
+| `.observation_sizes` / `.action_sizes` (MultiEnv) / `.single_observation_sizes` / `.single_action_sizes` (MultiVecEnv) | Per-env flat sizes (`prod(shape)`) as `List[int]`. |
+| `.observation_dtypes` / `.action_dtypes` (MultiEnv) / `.single_observation_dtypes` / `.single_action_dtypes` (MultiVecEnv) | Per-env dtypes. |
+| `.pad_dims()` | `(max(action_sizes), max(observation_sizes))` — flat sizes large enough to fit any env, for padding when `vmap`-ing a single policy over a heterogeneous fleet. |
 
 ### Registry & Catalog (`envrax.registry`, `envrax.envs`)
 
@@ -491,7 +495,7 @@ vec_env.compile()  # warm up the vmapped reset + step
 | --- | --- |
 | `EnvSpec(name, env_class, default_config, suite="")` | Frozen dataclass — the unit of registration. Stored in the registry under its canonical name. |
 | `EnvSuite` | Base class for declaring a suite of environments. Subclasses pin `prefix`, `category`, `version`, `required_packages`, and a `specs: List[EnvSpec]`. Override `get_name()` to produce canonical IDs. |
-| `EnvSet(*suites)` | Collection of `EnvSuite` instances. Supports `+`, iteration, and `verify_packages()`. |
+| `EnvSet(*suites)` | Collection of `EnvSuite` instances. Supports `+`, iteration, `verify_packages()`, and `from_names()` for rebuilding from persisted canonical IDs. |
 | `register(name, cls, default_config, *, suite="")` | Register a single `JaxEnv` under a name. Builds an `EnvSpec` internally. |
 | `register_suite(suite, *, version=None)` | Register every spec in an `EnvSuite` under its canonical IDs. |
 | `get_spec(name)` | Return the full registered `EnvSpec` for an environment. |

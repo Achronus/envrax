@@ -220,6 +220,22 @@ Unlike `EnvSuite.is_available()`, this one **raises** `MissingPackageError` list
 catalog.verify_packages()
 ```
 
+#### `from_names()`
+
+A classmethod for **reconstructing** an `EnvSet` from a list of canonical IDs already known to the registry:
+
+```python
+from envrax import EnvSet
+
+names = ["mjx/cartpole-v0", "mjx/ant-v0", "other/foo-v0"]
+catalog = EnvSet.from_names(names)
+
+catalog.env_categories()  # {'MuJoCo Playground': 2, 'Other Suite': 1}
+list(catalog)             # ['mjx/cartpole-v0', 'mjx/ant-v0', 'other/foo-v0']
+```
+
+The resulting set groups specs by their suite `category` tag, one internal suite per category. Any name that isn't registered raises a `ValueError` from [`get_spec()`](#utility-methods).
+
 #### Iteration, length, and merging
 
 `EnvSet` also implements the standard collection of magic methods so it behaves like a flat sequence of canonical IDs across all suites:
@@ -395,7 +411,7 @@ Phew! We've covered a lot here so let's recap:
 **Useful methods on suites and sets**
 
 - `EnvSuite`: `envs`, `n_envs`, `get_name()`, `all_names()`, `check()`, `is_available()`, plus iteration / `len()` / slicing / `in` support.
-- `EnvSet`: `suites`, `n_envs`, `all_names()`, `env_categories()`, `verify_packages()`, plus iteration / `len()` / `+` for merging.
+- `EnvSet`: `suites`, `n_envs`, `all_names()`, `env_categories()`, `verify_packages()`, `from_names()`, plus iteration / `len()` / `+` for merging.
 
 **Registering**
 

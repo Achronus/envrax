@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from math import prod
+from typing import Any, Dict, List, Tuple, Type
 
 import chex
 import jax
@@ -76,6 +77,51 @@ class MultiVecEnv:
     def single_action_spaces(self) -> List[Space]:
         """Per-group unbatched action spaces."""
         return [v.single_action_space for v in self._vec_envs]
+
+    @property
+    def single_observation_shapes(self) -> List[Tuple[int, ...]]:
+        """Per-group unbatched observation shapes."""
+        return [s.shape for s in self.single_observation_spaces]
+
+    @property
+    def single_action_shapes(self) -> List[Tuple[int, ...]]:
+        """Per-group unbatched action shapes."""
+        return [s.shape for s in self.single_action_spaces]
+
+    @property
+    def single_observation_sizes(self) -> List[int]:
+        """Per-group flat unbatched observation element counts (`prod(shape)`)."""
+        return [int(prod(s.shape)) for s in self.single_observation_spaces]
+
+    @property
+    def single_action_sizes(self) -> List[int]:
+        """Per-group flat unbatched action element counts (`prod(shape)`)."""
+        return [int(prod(s.shape)) for s in self.single_action_spaces]
+
+    @property
+    def single_observation_dtypes(self) -> List[Type]:
+        """Per-group unbatched observation dtypes."""
+        return [s.dtype for s in self.single_observation_spaces]
+
+    @property
+    def single_action_dtypes(self) -> List[Type]:
+        """Per-group unbatched action dtypes."""
+        return [s.dtype for s in self.single_action_spaces]
+
+    def pad_dims(self) -> Tuple[int, int]:
+        """
+        Return `(max_action_size, max_observation_size)` across groups.
+
+        Sizes are flat element counts of the unbatched per-group spaces.
+
+        Returns
+        -------
+        action : int
+            Largest flat action size.
+        observation : int
+            Largest flat observation size.
+        """
+        return max(self.single_action_sizes), max(self.single_observation_sizes)
 
     @property
     def class_groups(self) -> Dict[str, List[int]]:

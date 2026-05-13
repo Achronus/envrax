@@ -20,7 +20,33 @@ Every space **must** inherit from the `envrax.spaces.Space` base class and imple
 | `contains(x)` | Checks if `x` is a valid item in the space | `bool` |
 | `batch(n)` | Returns a space with a leading batch dimension `n` | `Space` |
 
+Plus, two attributes:
+
+| Attribute | Purpose | Type |
+| --- | --- | --- |
+| `shape` | The shape of a single sample (scalars use `()`) | `Tuple[int, ...]` |
+| `dtype` | The Space's data type | `Type` |
+
+These two are required by the multi-env pipeline (`MultiEnv` / `MultiVecEnv`) so downstream code can size buffers, pack/unpack tensors, and read dtypes without runtime introspection.
+
 We also recommend making the custom space class a frozen dataclass using `@dataclasses.dataclass(frozen=True)` to make it immutable metadata. Its a useful practice to help avoid accidental changes to something that should be a static entity. Envrax also does this with its own built-in spaces.
+
+### Declaring `shape`
+
+If the shape is fixed or user-supplied, declare it as a regular field — `Box` does this. If the shape is **computed** from other fields (the common case for custom spaces), declare it as a non-init field and assign it in `__post_init__`. Because the dataclass is frozen, you'll need `object.__setattr__` to bypass the frozen guard:
+
+```python
+@dataclass(frozen=True)
+class MySpace(Space):
+    n: int
+    dtype: Type = jnp.float32
+    shape: Tuple[int, ...] = field(init=False, default=())
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "shape", (self.n,))
+```
+
+It's a small bit of boilerplate, but it keeps the field type-clean and visible. Envrax's `MultiDiscrete` space uses exactly the same pattern.
 
 Okay, so that's the basics of `Space` requirements. Let's now build a custom one to get a better feel for it.
 
@@ -29,7 +55,7 @@ Okay, so that's the basics of `Space` requirements. Let's now build a custom one
 ??? example "Full Code"
 
     ```python
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
     from typing import Self, Tuple, Type
 
     import chex
@@ -61,6 +87,10 @@ Okay, so that's the basics of `Space` requirements. Let's now build a custom one
         batch_shape: Tuple[int, ...] = ()
         dtype: Type = jnp.float32
         probs: Tuple[float, ...] | None = None
+        shape: Tuple[int, ...] = field(init=False, default=())
+
+        def __post_init__(self) -> None:
+            object.__setattr__(self, "shape", (*self.batch_shape, self.n))
 
         def sample(self, rng: chex.Array) -> chex.Array:
             """
@@ -181,7 +211,7 @@ Based on the table we've seen, you might be thinking that an integer `dtype` (e.
 With that in mind, let's put our `Space` together and document it with a suitable docstring:
 
 ```python
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Self, Tuple, Type
 
 import chex
@@ -213,7 +243,13 @@ class OneHot(Space):
     batch_shape: Tuple[int, ...] = ()
     dtype: Type = jnp.float32
     probs: Tuple[float, ...] | None = None
+    shape: Tuple[int, ...] = field(init=False, default=())
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "shape", (*self.batch_shape, self.n))
 ```
+
+`shape` is declared as a non-init field with a placeholder default so it stays a real dataclass field and `__post_init__` fills it in from the other fields. Remember: `object.__setattr__` is needed because `frozen=True` blocks direct assignment.
 
 ### Step 2: Implement `sample()`
 
@@ -378,6 +414,7 @@ Be wary of the following "gotchas":
 - **Leaking Python-side computation into `sample()`**. The method runs inside JAX traces (`jax.jit`, `jax.vmap`, `jax.lax.scan`), so any `if` or `for` that branches on a *traced* value will raise `ConcretizationTypeError`. The `self.probs is not None` check in our `sample()` method is fine because `self.probs` is a Python attribute on the dataclass — it resolves *before* tracing kicks in, so JAX only ever sees one branch baked into the compiled graph.
 - **Using a `jnp.array` instead of a `Tuple` for `probs`-style fields**. We chose `Tuple[float, ...]` for `probs` rather than `jnp.array(...)` for a specific reason: `frozen=True` dataclasses need their fields to be hashable, and JAX arrays aren't (they're mutable buffers underneath). Storing `probs` as a tuple keeps the dataclass valid, and the inline `jnp.array(self.probs)` conversion inside `sample()` is the only place we pay the cost — once per call, not stored.
 - **Forgetting to forward optional parameters in `batch()`**. Our `batch()` explicitly passes `dtype=self.dtype` and `probs=self.probs` through to the new instance. If you skip those, the batched copy silently falls back to the defaults — so a `OneHot(n=3, probs=(0.7, 0.2, 0.1))` would suddenly become uniform after `batch(64)`, and your weighted sampling stops working with `VecEnv`. Always forward every instance field.
+- **Forgetting to declare `shape`**. Every space must expose a `shape: Tuple[int, ...]` attribute — it's what `MultiEnv` / `MultiVecEnv` read to size buffers and compute `pad_dims()`. If your shape is fixed, a regular field is enough; if it's computed from other fields (like `OneHot.shape = (*batch_shape, n)`), use the `field(init=False)` + `__post_init__` + `object.__setattr__` pattern shown earlier. Omitting `shape` won't fail at `Space` construction — it'll fail later when the space hits the multi-environment pipeline.
 
 ## Recap
 

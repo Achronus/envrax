@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from importlib.util import find_spec
 from typing import Dict, Iterator, List, Self, Type, Union
@@ -176,6 +177,13 @@ class EnvSuite:
         return all(self.check().values())
 
 
+class _RegisteredSuite(EnvSuite):
+    """Suite whose specs already hold canonical IDs — used by `EnvSet.from_names`."""
+
+    def get_name(self, name: str, version: str | None = None) -> str:
+        return name
+
+
 class EnvSet:
     """
     An ordered collection of `EnvSuite` instances.
@@ -247,6 +255,44 @@ class EnvSet:
     def __add__(self, other: Self) -> Self:
         """Merge two EnvSets into a new one."""
         return type(self)(*self._suites, *other._suites)
+
+    @classmethod
+    def from_names(cls, names: List[str]) -> Self:
+        """
+        Build an `EnvSet` from a list of registered canonical IDs.
+
+        Names are looked up via the registry and grouped by their suite
+        category tag (`EnvSpec.suite`). Used to reconstruct an `EnvSet`
+        from persisted state — e.g. checkpoint metadata — without needing
+        the original suite class hierarchy.
+
+        Parameters
+        ----------
+        names : List[str]
+            Registered canonical env IDs (e.g. `["mjx/cartpole-v0", ...]`).
+
+        Returns
+        -------
+        env_set : EnvSet
+            One suite per distinct category, each holding the matching specs.
+
+        Raises
+        ------
+        unknown_env : ValueError
+            Propagated from `get_spec` if any name is not registered.
+        """
+        from envrax.registry import get_spec  # local import to avoid cycles
+
+        by_cat: Dict[str, List[EnvSpec]] = defaultdict(list)
+        for name in names:
+            spec = get_spec(name)
+            by_cat[spec.suite].append(spec)
+
+        suites = [
+            _RegisteredSuite(category=category, specs=specs)
+            for category, specs in by_cat.items()
+        ]
+        return cls(*suites)
 
     def verify_packages(self) -> None:
         """

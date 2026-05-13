@@ -17,7 +17,7 @@ from envrax.registry import (
     registered_names,
 )
 from envrax.spaces import Box, Discrete
-from envrax.suite import EnvSet, EnvSpec, EnvSuite
+from envrax.suite import EnvSet, EnvSpec, EnvSuite, _RegisteredSuite
 
 # ---------------------------------------------------------------------------
 # Minimal concrete env for testing
@@ -381,3 +381,44 @@ class TestEnvSet:
         msg = str(exc_info.value)
         assert "Alpha" in msg
         assert "Beta" not in msg
+
+
+class TestEnvSetFromNames:
+    _KEYS = ("dummy/alpha-v0", "dummy/beta-v0", "other/gamma-v0")
+
+    def setup_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def teardown_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def test_groups_by_category(self):
+        register_suite(_DummySuite())  # category="Dummy"
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(
+            ["dummy/alpha-v0", "dummy/beta-v0", "other/gamma-v0"]
+        )
+        assert s.env_categories() == {"Dummy": 2, "Other": 1}
+
+    def test_iter_yields_canonical_names(self):
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(["other/gamma-v0"])
+        assert list(s) == ["other/gamma-v0"]
+
+    def test_all_names_yields_canonical_names(self):
+        register_suite(_DummySuite())
+        s = EnvSet.from_names(["dummy/alpha-v0", "dummy/beta-v0"])
+        assert s.all_names() == ["dummy/alpha-v0", "dummy/beta-v0"]
+
+    def test_suite_type_is_registered_suite(self):
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(["other/gamma-v0"])
+        assert isinstance(s.suites[0], _RegisteredSuite)
+
+    def test_unknown_name_raises(self):
+        with pytest.raises(ValueError, match="Unknown environment"):
+            EnvSet.from_names(["not/registered-v0"])
+
+

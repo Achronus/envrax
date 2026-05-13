@@ -1,5 +1,6 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from math import prod
+from typing import Any, Dict, List, Tuple, Type
 
 import chex
 import jax
@@ -61,6 +62,49 @@ class MultiEnv:
     def action_spaces(self) -> List[Space]:
         """Per-env action spaces."""
         return [env.action_space for env in self._envs]
+
+    @property
+    def observation_shapes(self) -> List[Tuple[int, ...]]:
+        """Per-env observation shapes."""
+        return [s.shape for s in self.observation_spaces]
+
+    @property
+    def action_shapes(self) -> List[Tuple[int, ...]]:
+        """Per-env action shapes."""
+        return [s.shape for s in self.action_spaces]
+
+    @property
+    def observation_sizes(self) -> List[int]:
+        """Per-env flat observation element counts (`prod(shape)`)."""
+        return [int(prod(s.shape)) for s in self.observation_spaces]
+
+    @property
+    def action_sizes(self) -> List[int]:
+        """Per-env flat action element counts (`prod(shape)`)."""
+        return [int(prod(s.shape)) for s in self.action_spaces]
+
+    @property
+    def observation_dtypes(self) -> List[Type]:
+        """Per-env observation dtypes."""
+        return [s.dtype for s in self.observation_spaces]
+
+    @property
+    def action_dtypes(self) -> List[Type]:
+        """Per-env action dtypes."""
+        return [s.dtype for s in self.action_spaces]
+
+    def pad_dims(self) -> Tuple[int, int]:
+        """
+        Return `(max_action_size, max_observation_size)` across envs.
+
+        Returns
+        -------
+        action : int
+            Largest flat action size.
+        observation : int
+            Largest flat observation size.
+        """
+        return max(self.action_sizes), max(self.observation_sizes)
 
     @property
     def class_groups(self) -> Dict[str, List[int]]:

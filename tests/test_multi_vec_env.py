@@ -257,3 +257,42 @@ class TestMultiVecEnv:
         spaces = multi.single_action_spaces
         assert spaces[0].n == 2
         assert spaces[1].n == 3
+
+
+class TestMultiVecEnvHelpers:
+    def _multi(self) -> MultiVecEnv:
+        return MultiVecEnv([
+            VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),
+            VecEnv(_PixEnv(config=_CONFIG), _N_ENVS),
+        ])
+
+    def test_single_observation_shapes(self):
+        assert self._multi().single_observation_shapes == [(4,), (4, 4, 3)]
+
+    def test_single_action_shapes(self):
+        # Discrete samples are scalars
+        assert self._multi().single_action_shapes == [(), ()]
+
+    def test_single_observation_sizes(self):
+        assert self._multi().single_observation_sizes == [4, 48]
+
+    def test_single_action_sizes(self):
+        # prod(()) == 1
+        assert self._multi().single_action_sizes == [1, 1]
+
+    def test_single_observation_dtypes(self):
+        assert self._multi().single_observation_dtypes == [jnp.float32, jnp.uint8]
+
+    def test_single_action_dtypes(self):
+        assert self._multi().single_action_dtypes == [jnp.int32, jnp.int32]
+
+    def test_pad_dims_returns_max_action_and_observation(self):
+        action, observation = self._multi().pad_dims()
+        assert action == 1  # max(1, 1)
+        assert observation == 48  # max(4, 4*4*3)
+
+    def test_pad_dims_returns_tuple_of_ints(self):
+        result = self._multi().pad_dims()
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert all(isinstance(x, int) for x in result)
