@@ -66,7 +66,7 @@ Just like [Gymnasium [:material-arrow-right-bottom:]](https://gymnasium.farama.o
 
 By default, JAX compiles a function lazily on its first real call. For a `VecEnv`, the first `step` kicks off XLA compilation and can take anywhere from a couple of seconds up to a minute, depending on env complexity.
 
-This cost can be pretty annoying during a training run, so we've added a `compile()` method to `VecEnv`. With this, you can create your own setup stages in advance, and cache the XLA-compiled kernels (default: `~/.cache/envrax/xla_cache`) too! :wink:
+This cost can be pretty annoying during a training run, so we've added a `compile()` method to `VecEnv`. With this, you can create your own setup stages in advance, and cache the XLA-compiled kernels (default: `.jax_cache` in the project root) too! :wink:
 
 Here's how to use it:
 

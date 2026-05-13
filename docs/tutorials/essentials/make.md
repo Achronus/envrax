@@ -32,7 +32,7 @@ All four mostly share the same keyword arguments, so you only need to learn them
 | `wrappers` | `List[WrapperType]` or `None` | `None` | The wrappers to apply to the environment(s). For the multi variants, the same pipeline is applied to *every* environment in the list. |
 | `jit_compile` | `bool` | `True` | Wraps the environment(s) in a `JitWrapper` to enable the XLA compilation cache. |
 | `pre_warm` | `bool` | `True` for `make` / `make_vec`; `False` for `make_multi` / `make_multi_vec` | When `jit_compile=True`, runs a dummy `reset` + `step` immediately to trigger XLA compilation. Otherwise, compilation is deferred to the first call or an explicit `.compile()` call. |
-| `cache_dir` | `Path` or `str` or `None` | `~/.cache/envrax/xla_cache` | The directory for the persistent XLA compilation cache. Pass `None` to disable. |
+| `cache_dir` | `Path` or `str` or `None` | `<cwd>/.jax_cache` | The directory for the persistent XLA compilation cache. Override with the `ENVRAX_CACHE_DIR` env var, or pass `None` to disable. |
 
 The single-env make methods (`make`, `make_vec`) take an additional `config` keyword:
 
