@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Tuple, Type
 
 import chex
@@ -9,6 +9,9 @@ import jax.numpy as jnp
 
 class Space(ABC):
     """Abstract base class for action and observation spaces."""
+
+    shape: Tuple[int, ...]
+    dtype: Type
 
     @abstractmethod
     def sample(self, rng: chex.Array) -> chex.Array:
@@ -53,6 +56,7 @@ class Discrete(Space):
 
     n: int
     dtype: Type = jnp.int32
+    shape: Tuple[int, ...] = field(init=False, default=())
 
     def sample(self, rng: chex.Array) -> chex.Array:
         """
@@ -217,6 +221,10 @@ class MultiDiscrete(Space):
 
     nvec: Tuple[int, ...]
     dtype: Type = jnp.int32
+    shape: Tuple[int, ...] = field(init=False, default=())
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "shape", (len(self.nvec),))
 
     def sample(self, rng: chex.Array) -> chex.Array:
         """

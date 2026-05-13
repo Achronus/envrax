@@ -5,6 +5,9 @@ from envrax.spaces import Box, Discrete, MultiDiscrete
 
 
 class TestDiscrete:
+    def test_shape_property(self):
+        assert Discrete(n=6).shape == ()
+
     def test_sample_shape(self):
         space = Discrete(n=6)
         rng = jax.random.PRNGKey(0)
@@ -82,6 +85,14 @@ class TestBox:
 
 
 class TestMultiDiscrete:
+    def test_shape_property(self):
+        assert MultiDiscrete(nvec=(4, 6, 3)).shape == (3,)
+
+    def test_shape_matches_sample(self):
+        space = MultiDiscrete(nvec=(4, 6, 3))
+        rng = jax.random.PRNGKey(0)
+        assert space.shape == space.sample(rng).shape
+
     def test_sample_shape(self):
         space = MultiDiscrete(nvec=(4, 6, 3))
         rng = jax.random.PRNGKey(0)

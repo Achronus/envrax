@@ -1,11 +1,10 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from importlib.util import find_spec
-from typing import Dict, Iterator, List, Self, Tuple, Type, Union
+from typing import Dict, Iterator, List, Self, Type, Union
 
 from envrax.env import EnvConfig, JaxEnv
 from envrax.error import MissingPackageError
-from envrax.utils import flat_size
 
 
 @dataclass(frozen=True)
@@ -177,31 +176,6 @@ class EnvSuite:
         """
         return all(self.check().values())
 
-    def pad_dims(self) -> Tuple[int, int]:
-        """
-        Return the largest flat action and observation sizes across the suite.
-
-        Each env is instantiated once with `jit_compile=False` then discarded.
-
-        Returns
-        -------
-        action : int
-            Largest flat action size across envs in the suite
-        observation : int
-            Largest flat observation size across envs in the suite
-        """
-        from envrax.make import make  # local import to avoid cycles
-
-        action_max, obs_max = 0, 0
-        for name in self.all_names():
-            env = make(name, jit_compile=False, cache_dir=None)
-            action_max = max(action_max, flat_size(env.action_space, name, "action"))
-            obs_max = max(
-                obs_max, flat_size(env.observation_space, name, "observation")
-            )
-
-        return action_max, obs_max
-
 
 class _RegisteredSuite(EnvSuite):
     """Suite whose specs already hold canonical IDs — used by `EnvSet.from_names`."""
@@ -319,23 +293,6 @@ class EnvSet:
             for category, specs in by_cat.items()
         ]
         return cls(*suites)
-
-    def pad_dims(self) -> Tuple[int, int]:
-        """
-        Aggregate `pad_dims` across all suites.
-
-        Returns
-        -------
-        action : int
-            Largest flat action size across all suites
-        observation : int
-            Largest flat observation size across all suites
-        """
-        suite_dims = [s.pad_dims() for s in self._suites]
-        return (
-            max(a for a, _ in suite_dims),
-            max(o for _, o in suite_dims),
-        )
 
     def verify_packages(self) -> None:
         """
