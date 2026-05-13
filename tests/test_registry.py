@@ -17,7 +17,7 @@ from envrax.registry import (
     registered_names,
 )
 from envrax.spaces import Box, Discrete
-from envrax.suite import EnvSet, EnvSpec, EnvSuite
+from envrax.suite import EnvSet, EnvSpec, EnvSuite, _RegisteredSuite
 
 # ---------------------------------------------------------------------------
 # Minimal concrete env for testing
@@ -381,3 +381,145 @@ class TestEnvSet:
         msg = str(exc_info.value)
         assert "Alpha" in msg
         assert "Beta" not in msg
+
+
+class _BoxEnv(JaxEnv[Box, Box, _DummyState, EnvConfig]):
+    """Env with Box obs/action spaces — for pad_dims success-path tests."""
+
+    OBS_SHAPE: tuple = (4,)
+    ACT_SHAPE: tuple = (2,)
+
+    @property
+    def observation_space(self) -> Box:
+        return Box(low=0, high=1, shape=self.OBS_SHAPE, dtype=jnp.float32)
+
+    @property
+    def action_space(self) -> Box:
+        return Box(low=-1, high=1, shape=self.ACT_SHAPE, dtype=jnp.float32)
+
+    def reset(self, rng: chex.PRNGKey):
+        obs = jnp.zeros(self.OBS_SHAPE, dtype=jnp.float32)
+        state = _DummyState(rng=rng, step=jnp.int32(0), done=jnp.bool_(False))
+        return obs, state
+
+    def step(self, state, action):
+        obs = jnp.zeros(self.OBS_SHAPE, dtype=jnp.float32)
+        new_state = state.__replace__(step=state.step + 1)
+        return obs, new_state, jnp.float32(0.0), jnp.bool_(False), {}
+
+
+class _BigBoxEnv(_BoxEnv):
+    OBS_SHAPE = (8, 8, 3)  # flat = 192
+    ACT_SHAPE = (5,)
+
+
+class TestEnvSetFromNames:
+    _KEYS = ("dummy/alpha-v0", "dummy/beta-v0", "other/gamma-v0")
+
+    def setup_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def teardown_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def test_groups_by_category(self):
+        register_suite(_DummySuite())  # category="Dummy"
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(
+            ["dummy/alpha-v0", "dummy/beta-v0", "other/gamma-v0"]
+        )
+        assert s.env_categories() == {"Dummy": 2, "Other": 1}
+
+    def test_iter_yields_canonical_names(self):
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(["other/gamma-v0"])
+        assert list(s) == ["other/gamma-v0"]
+
+    def test_all_names_yields_canonical_names(self):
+        register_suite(_DummySuite())
+        s = EnvSet.from_names(["dummy/alpha-v0", "dummy/beta-v0"])
+        assert s.all_names() == ["dummy/alpha-v0", "dummy/beta-v0"]
+
+    def test_suite_type_is_registered_suite(self):
+        register("other/gamma-v0", _DummyEnv, EnvConfig(), suite="Other")
+        s = EnvSet.from_names(["other/gamma-v0"])
+        assert isinstance(s.suites[0], _RegisteredSuite)
+
+    def test_unknown_name_raises(self):
+        with pytest.raises(ValueError, match="Unknown environment"):
+            EnvSet.from_names(["not/registered-v0"])
+
+
+class TestPadDims:
+    _KEYS = (
+        "padtest/small-v0",
+        "padtest/big-v0",
+        "padtest/discrete-v0",
+        "padtest2/lone-v0",
+    )
+
+    def setup_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def teardown_method(self):
+        for k in self._KEYS:
+            _REGISTRY.pop(k, None)
+
+    def _box_suite(self) -> EnvSuite:
+        register("padtest/small-v0", _BoxEnv, EnvConfig(), suite="Pad")
+        register("padtest/big-v0", _BigBoxEnv, EnvConfig(), suite="Pad")
+        return EnvSuite(
+            prefix="padtest",
+            category="Pad",
+            version="v0",
+            specs=[
+                EnvSpec("small", _BoxEnv, EnvConfig()),
+                EnvSpec("big", _BigBoxEnv, EnvConfig()),
+            ],
+        )
+
+    def test_suite_returns_tuple_of_two_ints(self):
+        suite = self._box_suite()
+        result = suite.pad_dims()
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        assert all(isinstance(x, int) for x in result)
+
+    def test_suite_takes_max_across_envs(self):
+        suite = self._box_suite()
+        action, observation = suite.pad_dims()
+        assert action == 5  # max(2, 5)
+        assert observation == 192  # max(4, 8*8*3)
+
+    def test_suite_uses_flat_size_for_multidim_shapes(self):
+        register("padtest/big-v0", _BigBoxEnv, EnvConfig(), suite="Pad")
+        suite = EnvSuite(
+            prefix="padtest",
+            category="Pad",
+            version="v0",
+            specs=[EnvSpec("big", _BigBoxEnv, EnvConfig())],
+        )
+        _, observation = suite.pad_dims()
+        assert observation == 8 * 8 * 3
+
+    def test_suite_raises_for_space_without_shape(self):
+        register("padtest/discrete-v0", _DummyEnv, EnvConfig(), suite="Pad")
+        suite = EnvSuite(
+            prefix="padtest",
+            category="Pad",
+            version="v0",
+            specs=[EnvSpec("discrete", _DummyEnv, EnvConfig())],
+        )
+        with pytest.raises(TypeError, match="has no `.shape`"):
+            suite.pad_dims()
+
+    def test_envset_aggregates_across_suites(self):
+        register("padtest/small-v0", _BoxEnv, EnvConfig(), suite="A")
+        register("padtest2/lone-v0", _BigBoxEnv, EnvConfig(), suite="B")
+        s = EnvSet.from_names(["padtest/small-v0", "padtest2/lone-v0"])
+        action, observation = s.pad_dims()
+        assert action == 5
+        assert observation == 192

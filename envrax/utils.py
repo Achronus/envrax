@@ -1,5 +1,39 @@
+from math import prod
 from types import get_original_bases
-from typing import Type, TypeVar, get_args, get_origin
+from typing import TYPE_CHECKING, Type, TypeVar, get_args, get_origin
+
+if TYPE_CHECKING:
+    from envrax.spaces import Space
+
+
+def flat_size(space: "Space", env_name: str, kind: str) -> int:
+    """
+    Return `prod(space.shape)`. Raises `TypeError` if `space` has no `.shape`.
+
+    Parameters
+    ----------
+    space : Space
+        Space-like with a `.shape` tuple.
+    env_name : str
+        Env name, for the error message.
+    kind : str
+        `"action"` or `"observation"`, for the error message.
+
+    Returns
+    -------
+    size : int
+        Total flat element count.
+    """
+    shape = getattr(space, "shape", None)
+
+    if shape is None:
+        raise TypeError(
+            f"Cannot compute flat size for env {env_name!r}: "
+            f"{kind} space {type(space).__name__} has no `.shape`. "
+            "Only spaces exposing a `.shape` tuple are supported."
+        )
+
+    return int(prod(shape))
 
 
 def resolve_generic_arg(
