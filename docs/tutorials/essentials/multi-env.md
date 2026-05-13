@@ -55,6 +55,12 @@ Some key things worth noting:
 | `multi.num_envs` | The number of environments (`M`) |
 | `multi.observation_spaces` | A list of per-env observation spaces |
 | `multi.action_spaces` | A list of per-env action spaces |
+| `multi.observation_shapes` | A list of per-env observation shapes (`s.shape`) |
+| `multi.action_shapes` | A list of per-env action shapes |
+| `multi.observation_sizes` | A list of per-env flat observation sizes (`prod(s.shape)`) |
+| `multi.action_sizes` | A list of per-env flat action sizes |
+| `multi.observation_dtypes` | A list of per-env observation dtypes |
+| `multi.action_dtypes` | A list of per-env action dtypes |
 | `multi.class_groups` | A `dict` mapping env class name → list of indices |
 
 ## `MultiVecEnv`
@@ -95,6 +101,12 @@ This follows the same pattern as `MultiEnv` with a slight difference - each elem
 | `multi_vec.single_action_spaces` | A list of per-group unbatched action spaces |
 | `multi_vec.observation_spaces` | A list of per-group batched observation spaces |
 | `multi_vec.action_spaces` | A list of per-group batched action spaces |
+| `multi_vec.single_observation_shapes` | A list of per-group unbatched observation shapes |
+| `multi_vec.single_action_shapes` | A list of per-group unbatched action shapes |
+| `multi_vec.single_observation_sizes` | A list of per-group flat unbatched observation sizes (`prod(s.shape)`) |
+| `multi_vec.single_action_sizes` | A list of per-group flat unbatched action sizes |
+| `multi_vec.single_observation_dtypes` | A list of per-group unbatched observation dtypes |
+| `multi_vec.single_action_dtypes` | A list of per-group unbatched action dtypes |
 | `multi_vec.class_groups` | A `dict` mapping inner env class name → list of `VecEnv` indices |
 
 ??? tip "Skip the boilerplate with `make_multi` / `make_multi_vec`"
@@ -127,6 +139,18 @@ multi.class_groups
 ```
 
 This is useful if you later want to stack observations for the repeated environment instances into a single batched tensor, perhaps for a policy forward pass or to compute per-task statistics.
+
+### Padding sizes
+
+Both `MultiEnv` and `MultiVecEnv` expose `pad_dims()`, which returns the largest flat action and observation sizes across the fleet as an `(action, observation)` tuple:
+
+```python
+action, observation = multi_vec.pad_dims()  # e.g. (5, 192)
+```
+
+This is useful when you need to `vmap` a single jitted function (or feed one shared policy network) over environments that don't share the same action or observation shapes. Sizes are computed as `prod(space.shape)`, so multi-dim observations are handled correctly.
+
+For `MultiVecEnv` the sizes come from the **unbatched** per-group spaces (i.e., `single_*_sizes`) — that's the dimension a per-environment policy normally uses.
 
 ## Common Pitfalls
 

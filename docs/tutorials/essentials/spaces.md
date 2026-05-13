@@ -35,6 +35,11 @@ All of them implement three methods from the `Space` contract:
 - **`contains(x)`** — check if `x` is a valid element of the space
 - **`batch(n)`** — return a batched version of the space with a leading dimension `n`.
 
+And two attributes:
+
+- **`shape`** — the shape of a single sample as a `tuple[int, ...]`. Scalars use `()`.
+- **`dtype`** — the space's data type.
+
 ### Discrete
 
 ???+ api "API Docs"
@@ -58,6 +63,7 @@ space = Discrete(n=4)  # actions: 0, 1, 2, 3
 # Properties
 space.dtype            # jnp.int32 (default) - space data type
 space.n                # 4 - number of available actions
+space.shape            # () - empty because its a scalar value!
 
 # Methods
 action = space.sample(jax.random.key(0))   # e.g., int32(2)
