@@ -1,6 +1,7 @@
 from typing import Any, Dict, Tuple
 
 import chex
+import jax
 import jax.numpy as jnp
 
 from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
@@ -20,14 +21,14 @@ class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def __init__(self, env: JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]) -> None:
         super().__init__(env)
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         return self._env.reset(rng)
 
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Advance the environment by one step and clip the reward to `{−1, 0, +1}`.
 
@@ -35,18 +36,18 @@ class ClipReward(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ----------
         state : StateT
             Current environment state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Observation from the inner step
         new_state : StateT
             Updated environment state
-        reward  : chex.Array
+        reward  : jax.Array
             Reward clipped to sign: `{−1.0, 0.0, +1.0}`
-        done  : chex.Array
+        done  : jax.Array
             Terminal flag from the inner step
         info : Dict[str, Any]
             Info dict from the inner step

@@ -84,8 +84,8 @@ In their base forms we have:
 @chex.dataclass
 class EnvState:
     rng: chex.PRNGKey   # PRNG key threaded through the episode
-    step: chex.Array    # current timestep
-    done: chex.Array    # episode termination flag
+    step: jax.Array    # current timestep
+    done: jax.Array    # episode termination flag
 
 @chex.dataclass
 class EnvConfig:
@@ -250,8 +250,8 @@ from envrax.spaces import Box, Discrete
 
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: chex.Array
-    ball_y: chex.Array
+    ball_x: jax.Array
+    ball_y: jax.Array
 
 
 @chex.dataclass
@@ -282,7 +282,7 @@ class BallEnv(JaxEnv[Box, Discrete, BallState, BallConfig]):
         obs = jnp.array([state.ball_x, state.ball_y])
         return obs, state
 
-    def step(self, state: BallState, action: chex.Array):
+    def step(self, state: BallState, action: jax.Array):
         rng, _ = jax.random.split(state.rng)
 
         # Use action to get new obs

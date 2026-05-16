@@ -68,7 +68,7 @@ class FrameStackObservation(
 
     def reset(
         self, rng: chex.PRNGKey
-    ) -> Tuple[chex.Array, FrameStackState[InnerStateT]]:
+    ) -> Tuple[jax.Array, FrameStackState[InnerStateT]]:
         """
         Reset the inner environment and initialise the frame stack.
 
@@ -79,7 +79,7 @@ class FrameStackObservation(
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Initial stacked observation
         state : FrameStackState
             Wrapper state containing the inner state and the stack
@@ -98,12 +98,12 @@ class FrameStackObservation(
     def step(
         self,
         state: FrameStackState[InnerStateT],
-        action: chex.Array,
+        action: jax.Array,
     ) -> Tuple[
-        chex.Array,
+        jax.Array,
         FrameStackState[InnerStateT],
-        chex.Array,
-        chex.Array,
+        jax.Array,
+        jax.Array,
         Dict[str, Any],
     ]:
         """
@@ -113,18 +113,18 @@ class FrameStackObservation(
         ----------
         state : FrameStackState
             Current wrapper state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Updated stacked observation
         new_state : FrameStackState
             Updated wrapper state
-        reward  : chex.Array
+        reward  : jax.Array
             Reward from the inner step
-        done  : chex.Array
+        done  : jax.Array
             Terminal flag from the inner step
         info : Dict[str, Any]
             Info dict from the inner step

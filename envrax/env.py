@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Tuple, Type, TypeVar
 
 import chex
+import jax
 import numpy as np
 
 from envrax.spaces import Space
@@ -25,15 +26,15 @@ class EnvState:
     ----------
     rng : chex.PRNGKey
         JAX PRNG key
-    step : chex.Array
+    step : jax.Array
         Current timestep within the episode
-    done : chex.Array
+    done : jax.Array
         bool scalar — episode termination flag
     """
 
     rng: chex.PRNGKey
-    step: chex.Array
-    done: chex.Array
+    step: jax.Array
+    done: jax.Array
 
 
 @chex.dataclass
@@ -89,7 +90,7 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ...
 
     @abstractmethod
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         """
         Set the environment to a starting state.
 
@@ -104,7 +105,7 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Initial observation
         state : StateT
             Initial environment state with `rng` embedded
@@ -115,8 +116,8 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Take an action through the environment.
 
@@ -128,18 +129,18 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ----------
         state : StateT
             Current environment state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Observation after the step
         new_state : StateT
             Updated environment state
-        reward : chex.Array
+        reward : jax.Array
             Scalar reward
-        done : chex.Array
+        done : jax.Array
             bool scalar — `True` when the episode has ended, `False` otherwise
         info : Dict[str, Any]
             Auxiliary diagnostic information

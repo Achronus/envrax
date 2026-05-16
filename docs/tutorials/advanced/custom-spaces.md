@@ -16,7 +16,7 @@ Every space **must** inherit from the `envrax.spaces.Space` base class and imple
 
 | Method | Purpose | Returns |
 | --- | --- | --- |
-| `sample(rng)` | Samples a random action from the space | `chex.Array` |
+| `sample(rng)` | Samples a random action from the space | `jax.Array` |
 | `contains(x)` | Checks if `x` is a valid item in the space | `bool` |
 | `batch(n)` | Returns a space with a leading batch dimension `n` | `Space` |
 
@@ -58,7 +58,6 @@ Okay, so that's the basics of `Space` requirements. Let's now build a custom one
     from dataclasses import dataclass, field
     from typing import Self, Tuple, Type
 
-    import chex
     import jax
     import jax.numpy as jnp
 
@@ -92,18 +91,18 @@ Okay, so that's the basics of `Space` requirements. Let's now build a custom one
         def __post_init__(self) -> None:
             object.__setattr__(self, "shape", (*self.batch_shape, self.n))
 
-        def sample(self, rng: chex.Array) -> chex.Array:
+        def sample(self, rng: jax.Array) -> jax.Array:
             """
             Sample a random one-hot vector of shape `(*batch_shape, n)`.
 
             Parameters
             ----------
-            rng : chex.Array
+            rng : jax.Array
                 JAX PRNG key.
 
             Returns
             -------
-            action : chex.Array
+            action : jax.Array
                 One-hot encoded action of shape `(*batch_shape, n)` and the
                 space's `dtype`.
             """
@@ -123,13 +122,13 @@ Okay, so that's the basics of `Space` requirements. Let's now build a custom one
                 )
             return jax.nn.one_hot(idx, self.n, dtype=self.dtype)
 
-        def contains(self, x: chex.Array) -> bool:
+        def contains(self, x: jax.Array) -> bool:
             """
             Check that `x` is a valid one-hot tensor of the expected shape.
 
             Parameters
             ----------
-            x : chex.Array
+            x : jax.Array
                 Action to validate. Expected to be a one-hot vector of
                 shape `(*batch_shape, n)`.
 
@@ -214,7 +213,6 @@ With that in mind, let's put our `Space` together and document it with a suitabl
 from dataclasses import dataclass, field
 from typing import Self, Tuple, Type
 
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -258,18 +256,18 @@ Next, we'll tackle the `sample()` method. This is pretty simple. All we need to 
 We can use the `jax.random` module for this. For the `probs` case, we can use `jax.random.choice`, otherwise we fall back to uniform sampling via `jax.random.randint`:
 
 ```python
-def sample(self, rng: chex.Array) -> chex.Array:
+def sample(self, rng: jax.Array) -> jax.Array:
     """
     Sample a random one-hot vector of shape `(*batch_shape, n)`.
     
     Parameters
     ----------
-    rng : chex.Array
+    rng : jax.Array
         JAX PRNG key.
 
     Returns
     -------
-    action : chex.Array
+    action : jax.Array
         float32 — One-hot encoded action.
     """
     if self.probs is not None:
@@ -303,13 +301,13 @@ Now for the membership check. This is a little more extensive.
 We need to verify that the input matches the expected shape, has exactly one `1` per row, and that all other values are `0`:
 
 ```python
-def contains(self, x: chex.Array) -> bool:
+def contains(self, x: jax.Array) -> bool:
     """
     Check that `x` is a valid one-hot tensor of the expected shape.
     
     Parameters
     ----------
-    x : chex.Array
+    x : jax.Array
         Action to validate. Expected to be a one-hot vector.
 
     Returns
@@ -410,7 +408,7 @@ Be wary of the following "gotchas":
 
 - **Forgetting `@dataclass(frozen=True)`**. Without `frozen=True`, your space becomes mutable and unhashable — which breaks equality checks (`OneHot(n=4) == OneHot(n=4)` would compare by identity instead of by value), prevents the space from being used as a `dict` key or `set` member, and silently corrupts any code that caches spaces by hash. Every Envrax built-in is `frozen=True`; your custom spaces should match.
 - **Not threading `dtype`**. We deliberately exposed `dtype` as a parameter on `OneHot` so users could pick `int32` / `uint8` / `float16` for memory savings or downstream-network compatibility. If you hard-code `jnp.float32` inside `sample()` instead of using `self.dtype`, users lose that flexibility — your space silently ignores their `dtype=...` argument.
-- **Using `jax.random.PRNGKey` instead of `chex.Array`**. Functionally identical at runtime, but `chex.Array` is the convention used across every method signature in Envrax (`Space.sample`, `JaxEnv.reset`, every wrapper). Sticking to it keeps your custom space consistent with the API standard so type checkers and IDE hovers behave the same way as the built-ins.
+- **Using `chex.Array` instead of `jax.Array`**. Functionally similar at runtime, but `jax.Array` is the convention used across every method signature in Envrax (`Space.sample`, `JaxEnv.reset`, every wrapper) — and because it's a concrete class (not a `Union` alias like `chex.Array`), IDE hovers and type-checkers resolve `.shape`, `.dtype`, etc. cleanly. Sticking to it keeps your custom space consistent with the API standard.
 - **Leaking Python-side computation into `sample()`**. The method runs inside JAX traces (`jax.jit`, `jax.vmap`, `jax.lax.scan`), so any `if` or `for` that branches on a *traced* value will raise `ConcretizationTypeError`. The `self.probs is not None` check in our `sample()` method is fine because `self.probs` is a Python attribute on the dataclass — it resolves *before* tracing kicks in, so JAX only ever sees one branch baked into the compiled graph.
 - **Using a `jnp.array` instead of a `Tuple` for `probs`-style fields**. We chose `Tuple[float, ...]` for `probs` rather than `jnp.array(...)` for a specific reason: `frozen=True` dataclasses need their fields to be hashable, and JAX arrays aren't (they're mutable buffers underneath). Storing `probs` as a tuple keeps the dataclass valid, and the inline `jnp.array(self.probs)` conversion inside `sample()` is the only place we pay the cost — once per call, not stored.
 - **Forgetting to forward optional parameters in `batch()`**. Our `batch()` explicitly passes `dtype=self.dtype` and `probs=self.probs` through to the new instance. If you skip those, the batched copy silently falls back to the defaults — so a `OneHot(n=3, probs=(0.7, 0.2, 0.1))` would suddenly become uniform after `batch(64)`, and your weighted sampling stops working with `VecEnv`. Always forward every instance field.

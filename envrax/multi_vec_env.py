@@ -133,7 +133,7 @@ class MultiVecEnv:
         """
         return self._class_groups
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[List[chex.Array], List[EnvState]]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[List[jax.Array], List[EnvState]]:
         """
         Reset all `M` vectorised environment groups with independent PRNG keys.
 
@@ -147,13 +147,13 @@ class MultiVecEnv:
 
         Returns
         -------
-        observations : List[chex.Array]
+        observations : List[jax.Array]
             Per-group batched observations
         states : List[EnvState]
             Per-group batched states
         """
         rngs = jax.random.split(rng, self.num_envs)
-        obs_list: List[chex.Array] = []
+        obs_list: List[jax.Array] = []
         state_list: List[EnvState] = []
 
         for i, vec in enumerate(self._vec_envs):
@@ -166,12 +166,12 @@ class MultiVecEnv:
     def step(
         self,
         states: List[EnvState],
-        actions: List[chex.Array],
+        actions: List[jax.Array],
     ) -> Tuple[
-        List[chex.Array],
+        List[jax.Array],
         List[EnvState],
-        List[chex.Array],
-        List[chex.Array],
+        List[jax.Array],
+        List[jax.Array],
         List[Dict[str, Any]],
     ]:
         """
@@ -181,18 +181,18 @@ class MultiVecEnv:
         ----------
         states : List[EnvState]
             Per-group batched states from a previous reset or step
-        actions : List[chex.Array]
+        actions : List[jax.Array]
             Per-group batched actions
 
         Returns
         -------
-        observations : List[chex.Array]
+        observations : List[jax.Array]
             Per-group batched observations after the step
         new_states : List[EnvState]
             Per-group updated batched states
-        rewards : List[chex.Array]
+        rewards : List[jax.Array]
             Per-group batched rewards
-        dones : List[chex.Array]
+        dones : List[jax.Array]
             Per-group batched terminal flags
         infos : List[Dict[str, Any]]
             Per-group batched info dicts
@@ -220,7 +220,7 @@ class MultiVecEnv:
             [r[4] for r in results],
         )
 
-    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[chex.Array, EnvState]:
+    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[jax.Array, EnvState]:
         """
         Reset a single `VecEnv` group by index.
 
@@ -233,7 +233,7 @@ class MultiVecEnv:
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Batched initial observations for this group
         state : EnvState
             Batched initial state for this group
@@ -244,8 +244,8 @@ class MultiVecEnv:
         self,
         idx: int,
         state: EnvState,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, EnvState, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Step a single `VecEnv` group by index.
 
@@ -255,18 +255,18 @@ class MultiVecEnv:
             Index of the `VecEnv` group to step
         state : EnvState
             Batched state for this group
-        action : chex.Array
+        action : jax.Array
             Batched action for this group
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Batched observations after the step
         new_state : EnvState
             Updated batched state
-        reward : chex.Array
+        reward : jax.Array
             Batched rewards
-        done : chex.Array
+        done : jax.Array
             Batched terminal flags
         info : Dict[str, Any]
             Batched info dict

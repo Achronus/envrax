@@ -30,7 +30,7 @@ If you're unsure which one to use, start with `Wrapper`. Then, if you find yours
     from typing import Any, Dict, Tuple
 
     import chex
-    import jax.numpy as jnp
+    import jax
 
     from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
     from envrax.wrappers import Wrapper
@@ -57,14 +57,14 @@ If you're unsure which one to use, start with `Wrapper`. Then, if you find yours
             super().__init__(env)
             self._scale = scale
 
-        def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+        def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
             return self._env.reset(rng)
 
         def step(
             self,
             state: StateT,
-            action: chex.Array,
-        ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+            action: jax.Array,
+        ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
             obs, new_state, reward, done, info = self._env.step(state, action)
             return obs, new_state, reward * self._scale, done, info
     ```
@@ -119,7 +119,7 @@ class ScaleReward(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
 This one's nice and easy. `ScaleReward` doesn't change anything about the reset path, so we delegate it straight to the inner environment:
 
 ```python
-def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
     return self._env.reset(rng)
 ```
 
@@ -133,8 +133,8 @@ Then, we scale the reward and return the new value:
 def step(
     self,
     state: StateT,
-    action: chex.Array,
-) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+    action: jax.Array,
+) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
     obs, new_state, reward, done, info = self._env.step(state, action)
 
     # Scale the reward
@@ -168,6 +168,7 @@ There are a few additional things worth noting:
     from typing import Any, Dict, Generic, Tuple, TypeVar
 
     import chex
+    import jax
     import jax.numpy as jnp
 
     from envrax import EnvState
@@ -186,12 +187,12 @@ There are a few additional things worth noting:
         ----------
         env_state : InnerStateT
             Forwarded inner environment state (precisely typed).
-        max_reward : chex.Array
+        max_reward : jax.Array
             Running maximum reward for the current episode (float32).
         """
 
         env_state: InnerStateT
-        max_reward: chex.Array
+        max_reward: jax.Array
 
 
     class MaxReward(
@@ -219,7 +220,7 @@ There are a few additional things worth noting:
 
         def reset(
             self, rng: chex.PRNGKey
-        ) -> Tuple[chex.Array, MaxRewardState[InnerStateT]]:
+        ) -> Tuple[jax.Array, MaxRewardState[InnerStateT]]:
             obs, env_state = self._env.reset(rng)
             state = MaxRewardState(
                 rng=env_state.rng,
@@ -233,12 +234,12 @@ There are a few additional things worth noting:
         def step(
             self,
             state: MaxRewardState[InnerStateT],
-            action: chex.Array,
+            action: jax.Array,
         ) -> Tuple[
-            chex.Array,
+            jax.Array,
             MaxRewardState[InnerStateT],
-            chex.Array,
-            chex.Array,
+            jax.Array,
+            jax.Array,
             Dict[str, Any],
         ]:
             obs, env_state, reward, done, info = self._env.step(state.env_state, action)
@@ -282,6 +283,7 @@ We also use `Generic[InnerStateT]` so other wrappers/environments keep their inn
 from typing import Generic, TypeVar
 
 import chex
+import jax
 
 from envrax import EnvState
 from envrax.wrappers import InnerStateT
@@ -290,7 +292,7 @@ from envrax.wrappers import InnerStateT
 @chex.dataclass
 class MaxRewardState(EnvState, Generic[InnerStateT]):
     env_state: InnerStateT     # forwarded inner state (precisely typed)
-    max_reward: chex.Array     # running max reward for this episode (float32)
+    max_reward: jax.Array     # running max reward for this episode (float32)
 ```
 
 ### Step 2: Declaring the Class
@@ -348,7 +350,7 @@ Now onto the interesting part. On `reset`, we need to:
 ```python
 def reset(
     self, rng: chex.PRNGKey
-) -> Tuple[chex.Array, MaxRewardState[InnerStateT]]:
+) -> Tuple[jax.Array, MaxRewardState[InnerStateT]]:
     obs, env_state = self._env.reset(rng)
 
     state = MaxRewardState(
@@ -375,12 +377,12 @@ Simple enough!
     def step(
         self,
         state: MaxRewardState[InnerStateT],
-        action: chex.Array,
+        action: jax.Array,
     ) -> Tuple[
-        chex.Array,
+        jax.Array,
         MaxRewardState[InnerStateT],
-        chex.Array,
-        chex.Array,
+        jax.Array,
+        jax.Array,
         Dict[str, Any],
     ]:
         obs, env_state, reward, done, info = self._env.step(
@@ -411,12 +413,12 @@ Firstly, we step the inner environment using the inner state — **not** the out
 def step(
     self,
     state: MaxRewardState[InnerStateT],
-    action: chex.Array,
+    action: jax.Array,
 ) -> Tuple[
-    chex.Array,
+    jax.Array,
     MaxRewardState[InnerStateT],
-    chex.Array,
-    chex.Array,
+    jax.Array,
+    jax.Array,
     Dict[str, Any],
 ]:
     obs, env_state, reward, done, info = self._env.step(

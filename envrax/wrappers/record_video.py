@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
 import chex
+import jax
 import numpy as np
 from jax.core import Tracer
 
@@ -120,7 +121,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
 
         return False
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         """
         Reset the environment and optionally begin a new recording.
 
@@ -131,7 +132,7 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             First observation
         state : StateT
             Initial environment state
@@ -151,8 +152,8 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Advance the environment by one step and record the frame if active.
 
@@ -165,18 +166,18 @@ class RecordVideo(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ----------
         state : StateT
             Current environment state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Observation after the step
         new_state : StateT
             Updated environment state
-        reward : chex.Array
+        reward : jax.Array
             Reward for this step
-        done : chex.Array
+        done : jax.Array
             `True` when the episode has ended
         info : Dict[str, Any]
             Pass-through info dict from the inner environment

@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Any
 
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -12,12 +11,12 @@ if TYPE_CHECKING:
 _LUMA = jnp.array([0.299, 0.587, 0.114], dtype=jnp.float32)
 
 
-def to_gray(obs: chex.Array) -> chex.Array:
+def to_gray(obs: jax.Array) -> jax.Array:
     """Apply NTSC luminance weights: `uint8[H, W, 3]` → `uint8[H, W]`."""
     return jnp.dot(obs.astype(jnp.float32), _LUMA).astype(jnp.uint8)
 
 
-def resize(obs: chex.Array, out_h: int, out_w: int) -> chex.Array:
+def resize(obs: jax.Array, out_h: int, out_w: int) -> jax.Array:
     """Bilinear-resize `uint8[H, W]` or `uint8[H, W, C]` to `(out_h, out_w[, C])`."""
     if obs.ndim == 3:
         shape = (out_h, out_w, obs.shape[-1])

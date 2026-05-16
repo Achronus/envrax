@@ -35,7 +35,7 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         """Single environment configuration."""
         return self.env.config
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         """
         Reset all `num_envs` environments with independent random starts.
 
@@ -49,7 +49,7 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Stacked first observations
         states : EnvState
             Batched environment states
@@ -60,8 +60,8 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def step(
         self,
         state: StateT,
-        actions: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        actions: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Advance all environments by one step simultaneously.
 
@@ -77,18 +77,18 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ----------
         state : EnvState
             Batched environment states
-        actions  : chex.Array
+        actions  : jax.Array
             One action per environment
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Observations after the step
         new_states : EnvState
             Updated batched states
-        rewards  : chex.Array
+        rewards  : jax.Array
             Per-environment rewards
-        dones  : chex.Array
+        dones  : jax.Array
             Per-environment terminal flags
         infos : Dict[str, Any]
             Batched info dict
@@ -98,8 +98,8 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def _step_env(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Single-env step that auto-resets on episode end.
 
@@ -110,7 +110,7 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         ----------
         state : EnvState
             Current environment state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns

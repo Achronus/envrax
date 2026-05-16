@@ -1,6 +1,7 @@
 from typing import Any, Dict, Tuple
 
 import chex
+import jax
 import jax.numpy as jnp
 
 from envrax.env import ActSpaceT, ConfigT, JaxEnv, StateT
@@ -26,7 +27,7 @@ class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
         super().__init__(env)
         require_box(env, type(self).__name__, dtype=jnp.uint8)
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         """
         Reset and return a normalised initial observation.
 
@@ -37,7 +38,7 @@ class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Normalised observation in `[0, 1]`
         state : StateT
             Inner environment state
@@ -48,8 +49,8 @@ class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Step and return a normalised observation.
 
@@ -57,18 +58,18 @@ class NormalizeObservation(Wrapper[Box, ActSpaceT, StateT, ConfigT]):
         ----------
         state : StateT
             Current environment state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Normalised observation in `[0, 1]`
         new_state : StateT
             Updated environment state
-        reward  : chex.Array
+        reward  : jax.Array
             Step reward
-        done  : chex.Array
+        done  : jax.Array
             Terminal flag
         info : Dict[str, Any]
             Environment metadata
