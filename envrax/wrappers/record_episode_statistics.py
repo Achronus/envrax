@@ -1,6 +1,7 @@
 from typing import Any, Dict, Generic, Tuple
 
 import chex
+import jax
 import jax.numpy as jnp
 
 from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT
@@ -20,15 +21,15 @@ class EpisodeStatisticsState(EnvState, Generic[InnerStateT]):
     ----------
     env_state : InnerStateT
         Inner environment state.
-    episode_return : chex.Array
+    episode_return : jax.Array
         Cumulative reward for the current episode. float32 scalar.
-    episode_length : chex.Array
+    episode_length : jax.Array
         Number of steps taken in the current episode. int32 scalar.
     """
 
     env_state: InnerStateT
-    episode_return: chex.Array
-    episode_length: chex.Array
+    episode_return: jax.Array
+    episode_length: jax.Array
 
 
 class RecordEpisodeStatistics(
@@ -58,7 +59,7 @@ class RecordEpisodeStatistics(
 
     def reset(
         self, rng: chex.PRNGKey
-    ) -> Tuple[chex.Array, EpisodeStatisticsState[InnerStateT]]:
+    ) -> Tuple[jax.Array, EpisodeStatisticsState[InnerStateT]]:
         """
         Reset the environment and episode accumulators.
 
@@ -69,7 +70,7 @@ class RecordEpisodeStatistics(
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Initial observation
         state : EpisodeStatisticsState
             Initial state with zeroed accumulators
@@ -88,12 +89,12 @@ class RecordEpisodeStatistics(
     def step(
         self,
         state: EpisodeStatisticsState[InnerStateT],
-        action: chex.Array,
+        action: jax.Array,
     ) -> Tuple[
-        chex.Array,
+        jax.Array,
         EpisodeStatisticsState[InnerStateT],
-        chex.Array,
-        chex.Array,
+        jax.Array,
+        jax.Array,
         Dict[str, Any],
     ]:
         """
@@ -103,18 +104,18 @@ class RecordEpisodeStatistics(
         ----------
         state : EpisodeStatisticsState
             Current state
-        action : chex.Array
+        action : jax.Array
             Action to take in the environment
 
         Returns
         -------
-        obs  : chex.Array
+        obs  : jax.Array
             Next observation
         new_state : EpisodeStatisticsState
             Updated state
-        reward  : chex.Array
+        reward  : jax.Array
             Step reward
-        done  : chex.Array
+        done  : jax.Array
             Episode terminal flag
         info : Dict[str, Any]
             Environment metadata extended with `"episode"`:

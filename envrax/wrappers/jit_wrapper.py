@@ -54,12 +54,12 @@ class JitWrapper(Wrapper[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         _, _state = self._jit_reset(_key)
         self._jit_step(_state, self._env.action_space.sample(_key))
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         return self._jit_reset(rng)
 
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         return self._jit_step(state, action)

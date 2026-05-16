@@ -117,7 +117,7 @@ class MultiEnv:
         """
         return self._class_groups
 
-    def reset(self, rng: chex.PRNGKey) -> Tuple[List[chex.Array], List[EnvState]]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[List[jax.Array], List[EnvState]]:
         """
         Reset all `M` environments with independent PRNG keys.
 
@@ -131,13 +131,13 @@ class MultiEnv:
 
         Returns
         -------
-        observations : List[chex.Array]
+        observations : List[jax.Array]
             Per-env initial observations
         states : List[EnvState]
             Per-env initial states
         """
         rngs = jax.random.split(rng, self.num_envs)
-        obs_list: List[chex.Array] = []
+        obs_list: List[jax.Array] = []
         state_list: List[EnvState] = []
 
         for i, env in enumerate(self._envs):
@@ -150,12 +150,12 @@ class MultiEnv:
     def step(
         self,
         states: List[EnvState],
-        actions: List[chex.Array],
+        actions: List[jax.Array],
     ) -> Tuple[
-        List[chex.Array],
+        List[jax.Array],
         List[EnvState],
-        List[chex.Array],
-        List[chex.Array],
+        List[jax.Array],
+        List[jax.Array],
         List[Dict[str, Any]],
     ]:
         """
@@ -165,18 +165,18 @@ class MultiEnv:
         ----------
         states : List[EnvState]
             Per-env states from a previous reset or step
-        actions : List[chex.Array]
+        actions : List[jax.Array]
             Per-env actions matching each env's action space
 
         Returns
         -------
-        observations : List[chex.Array]
+        observations : List[jax.Array]
             Per-env observations after the step
         new_states : List[EnvState]
             Per-env updated states
-        rewards : List[chex.Array]
+        rewards : List[jax.Array]
             Per-env scalar rewards
-        dones : List[chex.Array]
+        dones : List[jax.Array]
             Per-env terminal flags
         infos : List[Dict[str, Any]]
             Per-env info dicts
@@ -204,7 +204,7 @@ class MultiEnv:
             [r[4] for r in results],
         )
 
-    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[chex.Array, EnvState]:
+    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[jax.Array, EnvState]:
         """
         Reset a single environment by index.
 
@@ -217,7 +217,7 @@ class MultiEnv:
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Initial observation
         state : EnvState
             Initial state
@@ -228,8 +228,8 @@ class MultiEnv:
         self,
         idx: int,
         state: EnvState,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, EnvState, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, EnvState, jax.Array, jax.Array, Dict[str, Any]]:
         """
         Step a single environment by index.
 
@@ -239,18 +239,18 @@ class MultiEnv:
             Index of the environment to step
         state : EnvState
             Current state of the environment
-        action : chex.Array
+        action : jax.Array
             Action to take
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             Observation after the step
         new_state : EnvState
             Updated state
-        reward : chex.Array
+        reward : jax.Array
             Scalar reward
-        done : chex.Array
+        done : jax.Array
             Terminal flag
         info : Dict[str, Any]
             Info dict

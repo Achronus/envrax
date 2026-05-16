@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any, Dict, Generic, Self, Tuple, Type, TypeVar, overload
 
 import chex
+import jax
 import numpy as np
 
 from envrax.env import ActSpaceT, ConfigT, EnvState, JaxEnv, ObsSpaceT, StateT
@@ -94,7 +95,7 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         return f"{self.__class__.__name__}<{self._env!r}>"
 
     @abstractmethod
-    def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]:
+    def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]:
         """Reset the environment and return the initial observation and state."""
         raise NotImplementedError()
 
@@ -102,8 +103,8 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     def step(
         self,
         state: StateT,
-        action: chex.Array,
-    ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]:
+        action: jax.Array,
+    ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]:
         """Advance the environment by one step."""
         raise NotImplementedError()
 

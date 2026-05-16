@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Tuple, Type
 
-import chex
 import jax
 import jax.numpy as jnp
 
@@ -14,12 +13,12 @@ class Space(ABC):
     dtype: Type
 
     @abstractmethod
-    def sample(self, rng: chex.Array) -> chex.Array:
+    def sample(self, rng: jax.Array) -> jax.Array:
         """Sample a random element from this space."""
         ...
 
     @abstractmethod
-    def contains(self, x: chex.Array) -> bool:
+    def contains(self, x: jax.Array) -> bool:
         """Return True if x is a valid element of this space."""
         ...
 
@@ -58,18 +57,18 @@ class Discrete(Space):
     dtype: Type = jnp.int32
     shape: Tuple[int, ...] = field(init=False, default=())
 
-    def sample(self, rng: chex.Array) -> chex.Array:
+    def sample(self, rng: jax.Array) -> jax.Array:
         """
         Sample a random action uniformly from `[0, n)`.
 
         Parameters
         ----------
-        rng : chex.Array
+        rng : jax.Array
             JAX PRNG key.
 
         Returns
         -------
-        action : chex.Array
+        action : jax.Array
             int32 — Sampled action index.
         """
         return jax.random.randint(
@@ -80,13 +79,13 @@ class Discrete(Space):
             dtype=self.dtype,
         )
 
-    def contains(self, x: chex.Array) -> bool:
+    def contains(self, x: jax.Array) -> bool:
         """
         Return True if `x` is a valid action index.
 
         Parameters
         ----------
-        x : chex.Array
+        x : jax.Array
             Action to validate. Expected to be an integer scalar.
 
         Returns
@@ -135,18 +134,18 @@ class Box(Space):
     shape: Tuple[int, ...]
     dtype: Type = jnp.float32
 
-    def sample(self, rng: chex.Array) -> chex.Array:
+    def sample(self, rng: jax.Array) -> jax.Array:
         """
         Sample a random observation within `[low, high]`.
 
         Parameters
         ----------
-        rng : chex.Array
+        rng : jax.Array
             JAX PRNG key.
 
         Returns
         -------
-        obs : chex.Array
+        obs : jax.Array
             `dtype[*shape]` — Sampled observation array.
         """
         if jnp.issubdtype(self.dtype, jnp.integer):
@@ -165,13 +164,13 @@ class Box(Space):
             maxval=self.high,
         ).astype(self.dtype)
 
-    def contains(self, x: chex.Array) -> bool:
+    def contains(self, x: jax.Array) -> bool:
         """
         Return True if `x` is a valid observation within the space.
 
         Parameters
         ----------
-        x : chex.Array
+        x : jax.Array
             Observation to validate. Expected to match `self.shape`.
 
         Returns
@@ -226,18 +225,18 @@ class MultiDiscrete(Space):
     def __post_init__(self) -> None:
         object.__setattr__(self, "shape", (len(self.nvec),))
 
-    def sample(self, rng: chex.Array) -> chex.Array:
+    def sample(self, rng: jax.Array) -> jax.Array:
         """
         Sample one action per sub-space.
 
         Parameters
         ----------
-        rng : chex.Array
+        rng : jax.Array
             JAX PRNG key.
 
         Returns
         -------
-        actions : chex.Array
+        actions : jax.Array
             `int32[len(nvec)]` — One sampled action per sub-space.
         """
         nvec_arr = jnp.array(self.nvec, dtype=self.dtype)
@@ -249,13 +248,13 @@ class MultiDiscrete(Space):
             dtype=self.dtype,
         )
 
-    def contains(self, x: chex.Array) -> bool:
+    def contains(self, x: jax.Array) -> bool:
         """
         Return True if `x` is a valid multi-discrete action vector.
 
         Parameters
         ----------
-        x : chex.Array
+        x : jax.Array
             Action vector to validate. Expected to have shape `(len(nvec),)`.
 
         Returns
