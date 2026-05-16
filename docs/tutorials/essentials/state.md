@@ -44,13 +44,13 @@ Every Envrax state _must_ inherit from `envrax.EnvState`. By default, it provide
 
 ```python
 import chex
-import jax.numpy as jnp
+import jax
 
 @chex.dataclass
 class EnvState:
     rng: chex.PRNGKey  # (1)
-    step: chex.Array   # (2)
-    done: chex.Array   # (3)
+    step: jax.Array   # (2)
+    done: jax.Array   # (3)
 ```
 
 1. `jax.random.key()` threaded through the episode
@@ -62,15 +62,15 @@ Using class inheritance, you can extend it with whatever your environment needs 
 Sticking to our 2D ball example, we could add its current `x` and `y` position like so:
 
 ```python
+import jax
 import chex
-import jax.numpy as jnp
 
 from envrax import EnvState
 
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: chex.Array
-    ball_y: chex.Array
+    ball_x: jax.Array
+    ball_y: jax.Array
 ```
 
 Notice how we don't use the Python `float` type here. There's a reason for that and we'll explain that shortly.
@@ -81,14 +81,9 @@ We'll use this `BallState` throughout the next couple of tutorials, so make sure
 
 ## Field Rules/Types
 
-??? note "Chex Arrays"
-    `chex.Array` is a type alias for JAX and NumPy arrays making it a convenient annotation for "any array-like field". It doesn't wrap or modify values at runtime; it just makes type hints more readable.
-
-    For consistency, and convenience, we use them throughout the tutorials anywhere a field holds an array.
-
 Fields on an `EnvState` subclass must be **JAX-compatible** and **traceable**. This means we can have either:
 
-- [x] JAX arrays (`jnp.float32`, `jnp.int32`, `jnp.bool_`, `jax.ndarray`, `chex.Array`, etc.)
+- [x] JAX arrays (`jnp.float32`, `jnp.int32`, `jnp.bool_`, `jax.Array`, etc.)
 - [x] Nested `@chex.dataclass` instances
 - [ ] Python `list`, `dict`, `tuple`
 - [ ] Python objects, strings, `None`
@@ -105,8 +100,8 @@ If you need a fixed-size collection in your `EnvState`, use a JAX array:
 ```python
 @chex.dataclass
 class SnakeState(EnvState):
-    body_positions: chex.Array   # shape: (max_length, 2)
-    body_length: jnp.int32       # how many rows of body_positions are valid
+    body_positions: jax.Array   # shape: (max_length, 2)
+    body_length: jax.Array      # how many rows of body_positions are valid
 ```
 
 ??? warning "Array Shapes"
@@ -175,7 +170,7 @@ The pattern is similar to what we've discussed previously that uses the `@chex.d
 @chex.dataclass
 class FrameStackState(EnvState):
     env_state: EnvState       # forwarded inner state
-    obs_stack: chex.Array     # wrapper-specific data
+    obs_stack: jax.Array     # wrapper-specific data
 ```
 
 That's it! Everything the inner environment provided is preserved, plus whatever its wrapper needs to remember. This is a more advanced topic so we'll build on this in a later tutorial.

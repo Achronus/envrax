@@ -122,7 +122,7 @@ Like `EnvState`, there are a few common "gotchas" to be mindful of:
 
 - **Mismatched action shape** — `actions` must have shape `(num_envs, ...)` with the same dtype as the action space. For a `Discrete` action, that's `jnp.int32[num_envs]`.
 - **`reset` with a single key** — `VecEnv.reset` takes one master key and splits it internally automatically. Don't pre-split your keys!
-- **Trying to use Python-side side-effects inside `step`** — `VecEnv` vmaps over the batch, so `print()`, file writes, etc. trace and explode. See [Debugging JIT'd Environments](../advanced/debugging.md) for `jax.debug.print`, callbacks, and the `info`-channel pattern.
+- **Trying to use Python-side side-effects inside `step`** — `VecEnv` vmaps over the batch, so `print()`, file writes, etc. trace and explode.
 - **Forgetting `compile()` in benchmarks** — the first call will always look slow because XLA is compiling. Call `compile()` before timing anything.
 
 ## Recap

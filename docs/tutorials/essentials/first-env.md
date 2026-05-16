@@ -21,15 +21,20 @@ Without further ado, let's get to it! :rocket:
 From our first tutorial ([State](state.md)) we already created our `BallState`, here's a refresher:
 
 ```python
+import chex
+import jax
+
 @chex.dataclass
 class BallState(EnvState):
-    ball_x: chex.Array
-    ball_y: chex.Array
+    ball_x: jax.Array
+    ball_y: jax.Array
 ```
 
 We'll also reuse the `BallConfig` from [Configuration](configuration.md):
 
 ```python
+import chex
+
 @chex.dataclass
 class BallConfig(EnvConfig):
     friction: float = 0.98
@@ -67,8 +72,8 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
 
     @chex.dataclass
     class BallState(EnvState):
-        ball_x: chex.Array
-        ball_y: chex.Array
+        ball_x: jax.Array
+        ball_y: jax.Array
 
 
     @chex.dataclass
@@ -99,7 +104,7 @@ Perfect! Now we have everything we need. Let's build our `BallEnv`!
             obs = jnp.array([state.ball_x, state.ball_y])
             return obs, state
 
-        def step(self, state: BallState, action: chex.Array):
+        def step(self, state: BallState, action: jax.Array):
             rng, _ = jax.random.split(state.rng)
 
             # Use action to get new obs
@@ -188,12 +193,12 @@ We can build an Envrax environment in three easy steps:
             def action_space(self) -> ActSpaceT: ...
 
             @abstractmethod
-            def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, StateT]: ...
+            def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, StateT]: ...
 
             @abstractmethod
             def step(
-                self, state: StateT, action: chex.Array,
-            ) -> Tuple[chex.Array, StateT, chex.Array, chex.Array, Dict[str, Any]]: ...
+                self, state: StateT, action: jax.Array,
+            ) -> Tuple[jax.Array, StateT, jax.Array, jax.Array, Dict[str, Any]]: ...
         ```
 
     Two things worth mentioning:
@@ -250,7 +255,7 @@ For the PRNG key, we split it once into two keys - the first for the `BallState`
 Here's what the first part looks like:
 
 ```python
-def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, BallState]:
+def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, BallState]:
     rng, init_rng = jax.random.split(rng) # (1)
     rng_x, rng_y = jax.random.split(init_rng) # (2)
     ...
@@ -288,7 +293,7 @@ Great! That's the `reset` method done! :smile:
 Here's what it looks like in full:
 
 ```python
-def reset(self, rng: chex.PRNGKey) -> Tuple[chex.Array, BallState]:
+def reset(self, rng: chex.PRNGKey) -> Tuple[jax.Array, BallState]:
     rng, init_rng = jax.random.split(rng)
     rng_x, rng_y = jax.random.split(init_rng)
 
@@ -324,7 +329,7 @@ That's a lot! Let's take it one step at a time, starting with the PRNG managemen
 We can do this in one line using our handy-dandy `jax.random.split()` approach:
 
 ```python
-def step(self, state: BallState, action: chex.Array):
+def step(self, state: BallState, action: jax.Array):
     rng, _ = jax.random.split(state.rng)
     ...
 ```
@@ -401,7 +406,7 @@ Here's what all of that looks like:
 Lastly, all we need to do is return the values. Here's the complete method with the return statement included:
 
 ```python
-def step(self, state: BallState, action: chex.Array):
+def step(self, state: BallState, action: jax.Array):
     rng, _ = jax.random.split(state.rng)
 
     # Use action to get new obs
