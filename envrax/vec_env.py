@@ -3,23 +3,28 @@ from typing import Any, Dict, Generic, Tuple
 
 import chex
 import jax
+import jax.numpy as jnp
 import numpy as np
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
+from envrax.batched_env import BatchedEnv
 from envrax.env import ActSpaceT, ConfigT, JaxEnv, ObsSpaceT, StateT
 from envrax.spaces import Space
 
 
-class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
+class VecEnv(BatchedEnv, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     """
     Wraps any `JaxEnv` to operate over a batch of environments simultaneously.
+
+    Canonical `BatchedEnv` implementation: `num_envs` independent copies of
+    one `JaxEnv` stepped in parallel via `jax.vmap`, with per-slot auto-reset.
 
     Parameters
     ----------
     env : JaxEnv
         Single-instance environment to vectorise
     num_envs : int
-        Number of parallel environments
+        Number of parallel environments (`n_slots`)
     """
 
     def __init__(
@@ -29,6 +34,23 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     ) -> None:
         self.env = env
         self.num_envs = num_envs
+
+    @property
+    def n_slots(self) -> int:
+        """Number of parallel slots (= `num_envs`)."""
+        return self.num_envs
+
+    @property
+    def name(self) -> str:
+        """
+        Inner env's class name. Used as the default key by `MultiVecEnv`.
+
+        Returns
+        -------
+        name : str
+            Class name of the wrapped `JaxEnv`.
+        """
+        return type(self.env).__name__
 
     @property
     def config(self) -> ConfigT:
@@ -123,39 +145,55 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         reset_rng, _ = jax.random.split(new_state.rng)
         reset_obs, reset_state = self.env.reset(reset_rng)
 
-        final_obs = jax.lax.cond(done, lambda: reset_obs, lambda: obs)
-        final_state = jax.lax.cond(done, lambda: reset_state, lambda: new_state)
+        final_obs = jnp.where(done, reset_obs, obs)
+        final_state = jax.tree.map(
+            lambda r, n: jnp.where(done, r, n), reset_state, new_state
+        )
 
         return final_obs, final_state, reward, done, info
 
-    def render(self, state: StateT, *, index: int = 0) -> np.ndarray:
+    def slot_state(self, state: StateT, slot_idx: int) -> StateT:
         """
-        Render a single environment from the batch.
-
-        Extracts the state at `index` from the batched state pytree and
-        delegates to the inner env's `render()`.
+        Extract the state pytree for a single slot from the batched state.
 
         Parameters
         ----------
         state : EnvState
             Batched environment state
-        index : int (optional)
-            Which environment in the batch to render. Default is `0`.
+        slot_idx : int
+            Slot index in `[0, num_envs)`
+
+        Returns
+        -------
+        single_state : EnvState
+            Unbatched state pytree for the chosen slot.
+        """
+        return jax.tree.map(lambda x: x[slot_idx], state)
+
+    def render_slot(self, state: StateT, slot_idx: int) -> np.ndarray:
+        """
+        Render a single environment from the batch.
+
+        Parameters
+        ----------
+        state : EnvState
+            Batched environment state
+        slot_idx : int
+            Slot index in `[0, num_envs)`
 
         Returns
         -------
         frame : np.ndarray
             uint8 RGB array of shape `(H, W, 3)`
         """
-        single_state = jax.tree.map(lambda x: x[index], state)
-        return self.env.render(single_state)
+        return self.env.render(self.slot_state(state, slot_idx))
 
     def compile(self, cache_dir: Path | str | None = DEFAULT_CACHE_DIR) -> None:
         """
-        Trigger XLA compilation by running a dummy `reset` + `step`.
+        Trigger XLA compilation by running dummy `reset` + `step`.
 
-        Useful when construction and compilation should be separate phases.
-        Safe to call multiple times.
+        Runs once with `done=False` (typical path) and once with `done=True`
+        on the first slot to warm both branches of the auto-reset path.
 
         Parameters
         ----------
@@ -170,6 +208,10 @@ class VecEnv(Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         _dummy_actions = jax.vmap(self.env.action_space.sample)(_action_rngs)
 
         self.step(_state, _dummy_actions)
+
+        _forced_done = _state.done.at[0].set(jnp.bool_(True))
+        _state_done = _state.__replace__(done=_forced_done)
+        self.step(_state_done, _dummy_actions)
 
     @property
     def single_observation_space(self) -> ObsSpaceT:

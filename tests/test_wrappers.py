@@ -686,16 +686,16 @@ class TestWrapperRender:
 
 
 class TestVecEnvRenderAndRepr:
-    def test_render_returns_single_frame_at_index(self):
+    def test_render_slot_returns_single_frame_at_index(self):
         vec = VecEnv(_RenderEnv(config=_CONFIG), num_envs=4)
         _, states = vec.reset(_RNG)
-        frame = vec.render(states, index=2)
+        frame = vec.render_slot(states, slot_idx=2)
         assert frame.shape == (2, 2, 3)
 
-    def test_render_default_index_zero(self):
+    def test_render_slot_default_zero(self):
         vec = VecEnv(_RenderEnv(config=_CONFIG), num_envs=4)
         _, states = vec.reset(_RNG)
-        frame = vec.render(states)
+        frame = vec.render_slot(states, slot_idx=0)
         assert frame.shape == (2, 2, 3)
 
     def test_repr_includes_inner_env_and_count(self):

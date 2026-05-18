@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
+from envrax.batched_env import BatchedEnv
 from envrax.env import EnvConfig, JaxEnv
 from envrax.multi_env import MultiEnv
 from envrax.multi_vec_env import MultiVecEnv
@@ -181,64 +182,39 @@ def make_multi(
 
 
 def make_multi_vec(
-    names: List[str],
-    n_envs: int,
+    batched_envs: List[BatchedEnv] | Dict[str, BatchedEnv],
     *,
-    wrappers: List[WrapperType] | None = None,
     jit_compile: bool = True,
     pre_warm: bool = False,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
 ) -> MultiVecEnv:
     """
-    Create a `MultiVecEnv` managing M heterogeneous vectorised environments.
-
-    Each environment is constructed with its registered default config. For per-environment
-    config overrides, register the variants ahead of time or compose
-    manually with `MultiVecEnv([VecEnv(make(name, config=...), n), ...])`.
-
-    By default, `pre_warm=False` so VecEnv instances are created but not
-    compiled immediately. Call `multi_vec_env.compile()` to trigger
-    compilation as a separate setup phase.
+    Wrap `BatchedEnv` instances into a `MultiVecEnv`.
 
     Parameters
     ----------
-    names : List[str]
-        Registered environment names
-    n_envs : int
-        Number of parallel copies per environment
-    wrappers : List[WrapperType] (optional)
-        Wrapper pipeline applied to every inner environment before vectorisation.
-        Must be compatible with the observation and action spaces of every
-        environment used.
+    batched_envs : List[BatchedEnv] | Dict[str, BatchedEnv]
+        Envs to wrap. List form: keys derived from `env.name` with suffixes
+        on duplicates. Dict form: keys used verbatim for explicit control.
     jit_compile : bool (optional)
         Enable the XLA compilation cache. Default is `True`.
     pre_warm : bool (optional)
-        When `jit_compile=True`, compile each VecEnv immediately.
-        Default is `False` — call `multi_vec_env.compile()` later instead.
+        Compile each inner env and the multi-step jit immediately. Default
+        is `False` — call `multi_vec_env.compile()` later.
     cache_dir : Path | str | None (optional)
-        Directory for the persistent XLA compilation cache
+        Directory for the persistent XLA compilation cache.
 
     Returns
     -------
     multi_vec_env : MultiVecEnv
-        Manager holding all M vectorised environments
+        Manager holding all `BatchedEnv` instances.
     """
     if jit_compile:
         setup_cache(cache_dir)
 
-    vec_envs = []
-    for name in names:
-        inner = make(
-            name,
-            wrappers=wrappers,
-            jit_compile=False,
-            cache_dir=None,
-        )
-        vec = VecEnv(inner, n_envs)
+    multi = MultiVecEnv(batched_envs)
 
-        if jit_compile and pre_warm:
-            vec.compile(cache_dir=cache_dir)
+    if jit_compile and pre_warm:
+        multi.compile(cache_dir=cache_dir)
 
-        vec_envs.append(vec)
-
-    return MultiVecEnv(vec_envs)
+    return multi

@@ -1,3 +1,4 @@
+from envrax.batched_env import BatchedEnv
 from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.error import MissingPackageError
 from envrax.make import make, make_multi, make_multi_vec, make_vec
@@ -25,6 +26,7 @@ from envrax.wrappers import (
 )
 
 __all__ = [
+    "BatchedEnv",
     "Box",
     "ClipReward",
     "Discrete",
