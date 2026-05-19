@@ -40,13 +40,16 @@ We create an instance of our environment, pass it into `VecEnv` and provide a nu
 
 ## How It Works
 
-`VecEnv` is ~30 lines of glue around `jax.vmap`. Here's a quick rundown:
+`VecEnv` is ~30 lines of glue around `jax.vmap`, and the core implementation of the [`BatchedEnv`](../../api/env/batched.md) base class. Here's a quick rundown:
 
 1. **`reset(rng)`** — splits `rng` into `num_envs` sub-keys and vmaps the inner `env.reset` over them.
 2. **`step(state, actions)`** — vmaps `env.step` over the batched state and actions.
-3. **Environments auto-reset** — after each `step`, any env with `done=True` is automatically reset using the next rng from its own state. This happens via `jax.lax.cond` inside the vmapped body, so episode boundaries don't require Python-level control flow.
+3. **Environments auto-reset** — after each `step`, any env with `done=True` is automatically reset using the next rng from its own state. The selection between "step output" and "fresh reset" is done with a `jnp.where` mask inside the vmapped body, so episode boundaries don't require Python-level control flow.
 
 The auto-reset behaviour is what makes `VecEnv` "training-ready": you never have to branch on `done` yourself when collecting rollouts; it does it all for you! :smile:
+
+??? info "What's `BatchedEnv`?"
+    `BatchedEnv` is the abstract base class that says "I step `N` independent agent results in one call." `VecEnv` is one strategy that satisfies it (vmap over a single `JaxEnv`); downstream packages can ship others (e.g. a composite MJX scene). [`MultiVecEnv`](multi-env.md#multivecenv) accepts any `BatchedEnv`, so the underlying batching strategy stays pluggable.
 
 ## Available Attributes
 
@@ -56,6 +59,8 @@ Just like [Gymnasium [:material-arrow-right-bottom:]](https://gymnasium.farama.o
 | --- | --- |
 | `vec_env.env` | The wrapped inner `JaxEnv` |
 | `vec_env.num_envs` | The number of parallel environments |
+| `vec_env.n_slots` | Alias for `num_envs`, satisfies the `BatchedEnv` contract |
+| `vec_env.name` | Inner env's class name — used as the default key by `MultiVecEnv` |
 | `vec_env.config` | The inner environment's config for quick and easy access |
 | `vec_env.single_observation_space` | The per-env observation space |
 | `vec_env.single_action_space` | The per-env action space |
@@ -104,17 +109,18 @@ This order matters for two reasons:
 The [`make_vec()`](make.md) factory method applies wrappers in this order automatically. We'll cover the full set of factory methods later in the [Make Methods](make.md) tutorial! :wink:
 
 !!! warning "`RecordVideo` is the Exception"
-    `RecordVideo` writes MP4 files Python-side and is **not JIT/vmap-compatible**. Use it on a single env, or render manually via `vec_env.render(states, index=0)` and feed an external recorder.
+    `RecordVideo` writes MP4 files Python-side and is **not JIT/vmap-compatible**. Use it on a single environment, or render manually via `vec_env.render_slot(states, slot_idx=0)` and feed an external recorder.
 
 ## Rendering
 
-`VecEnv` also comes with its own `render()` method. This extracts one environment from the batch and calls its own `render` method:
+`VecEnv` exposes `render_slot()` and `slot_state()` for pulling a single environment out of the batch. `render_slot` extracts one slot and delegates to the inner environment's `render`:
 
 ```python
-frame = vec_env.render(states, index=0)    # np.ndarray uint8 (H, W, 3)
+frame = vec_env.render_slot(states, slot_idx=0)    # np.ndarray uint8 (H, W, 3)
+single = vec_env.slot_state(states, slot_idx=0)    # unbatched state pytree
 ```
 
-This can be useful for logging an episode during training without unpacking the batched state yourself. We'll discuss [Rendering](rendering.md) more in a future tutorial.
+This is useful for logging an episode during training without unpacking the batched state yourself, and for any downstream tooling that wants a single agent's state at a time. We'll discuss [Rendering](rendering.md) more in a future tutorial.
 
 ## Common Pitfalls
 
@@ -130,12 +136,13 @@ Like `EnvState`, there are a few common "gotchas" to be mindful of:
 To recap:
 
 - `VecEnv(env, num_envs)` uses `jax.vmap` on your environment for batched rollouts
+- `VecEnv` inherits from `BatchedEnv` — it's the canonical vmap strategy for that contract
 - Batched fields all gain a leading `num_envs` dimension
-- Auto-reset on `done=True` is handled inside the vmapped body — no Python control flow needed
-- A small set of attributes (`env`, `num_envs`, `config`, plus single and batched space properties) gives quick access to the wrapped env's metadata
+- Auto-reset on `done=True` is handled inside the vmapped body via a `jnp.where` mask — no Python control flow needed
+- A small set of attributes (`env`, `num_envs`, `n_slots`, `name`, `config`, plus single and batched space properties) gives quick access to the wrapped environment's metadata
 - Call `vec_env.compile()` to trigger XLA compilation as a separate setup phase, with cached kernels reused across runs
-- Apply wrappers to your `JaxEnv` *first*, then pass the wrapped env to `VecEnv`
-- `vec_env.render(states, index=0)` extracts one env from the batch for visual inspection
+- Apply wrappers to your `JaxEnv` *first*, then pass the wrapped environment to `VecEnv`
+- `vec_env.render_slot(states, slot_idx=0)` extracts one environment from the batch for visual inspection; `vec_env.slot_state(states, slot_idx=0)` gives you the raw unbatched state pytree
 
 Next, we'll look at using some new classes to make `M` *heterogeneous* environments with ease. See you there! :wave:
 
