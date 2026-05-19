@@ -43,14 +43,17 @@ class VecEnv(BatchedEnv, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
     @property
     def name(self) -> str:
         """
-        Inner env's class name. Used as the default key by `MultiVecEnv`.
+        Inner environment's `name`. Used as the default key by `MultiVecEnv`.
+
+        Picks up wrapper delegation, so `VecEnv(JitWrapper(BallEnv()))`
+        still reports `"BallEnv"` rather than `"JitWrapper"`.
 
         Returns
         -------
         name : str
-            Class name of the wrapped `JaxEnv`.
+            The wrapped environment's `name`.
         """
-        return type(self.env).__name__
+        return self.env.name
 
     @property
     def config(self) -> ConfigT:

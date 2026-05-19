@@ -13,7 +13,7 @@ from envrax.batched_env import BatchedEnv
 from envrax.spaces import Space
 
 
-def _auto_key(batched_envs: List[BatchedEnv]) -> Dict[str, BatchedEnv]:
+def _auto_key(envs: List[BatchedEnv]) -> Dict[str, BatchedEnv]:
     """
     Derive dict keys from each `BatchedEnv.name`, suffixing duplicates.
 
@@ -23,7 +23,7 @@ def _auto_key(batched_envs: List[BatchedEnv]) -> Dict[str, BatchedEnv]:
 
     Parameters
     ----------
-    batched_envs : List[BatchedEnv]
+    envs : List[BatchedEnv]
         Envs to key.
 
     Returns
@@ -31,11 +31,11 @@ def _auto_key(batched_envs: List[BatchedEnv]) -> Dict[str, BatchedEnv]:
     envs_dict : Dict[str, BatchedEnv]
         Derived keys preserving input order.
     """
-    counts = Counter(env.name for env in batched_envs)
+    counts = Counter(env.name for env in envs)
     counters: Dict[str, int] = {}
     envs_dict: Dict[str, BatchedEnv] = {}
 
-    for env in batched_envs:
+    for env in envs:
         name = env.name
         if counts[name] == 1:
             key = name
@@ -63,7 +63,7 @@ class MultiVecEnv:
 
     Parameters
     ----------
-    batched_envs : List[BatchedEnv] | Dict[str, BatchedEnv]
+    envs : List[BatchedEnv] | Dict[str, BatchedEnv]
         Envs to wrap. When a list, keys are derived from `env.name` with
         suffixes on duplicates. When a dict, keys are used verbatim.
         Iteration order is preserved.
@@ -71,25 +71,25 @@ class MultiVecEnv:
 
     def __init__(
         self,
-        batched_envs: List[BatchedEnv] | Dict[str, BatchedEnv],
+        envs: List[BatchedEnv] | Dict[str, BatchedEnv],
     ) -> None:
-        if not batched_envs:
+        if not envs:
             raise ValueError("MultiVecEnv requires at least one 'BatchedEnv'.")
 
-        if isinstance(batched_envs, dict):
-            envs_dict = dict(batched_envs)
+        if isinstance(envs, dict):
+            envs_dict = dict(envs)
         else:
-            envs_dict = _auto_key(list(batched_envs))
+            envs_dict = _auto_key(list(envs))
 
-        self._batched_envs: Dict[str, BatchedEnv] = envs_dict
-        self._keys: List[str] = list(self._batched_envs.keys())
+        self._envs: Dict[str, BatchedEnv] = envs_dict
+        self._keys: List[str] = list(self._envs.keys())
         self._jit_reset = jax.jit(self._reset_impl)
         self._jit_step = jax.jit(self._step_impl)
 
     @property
-    def batched_envs(self) -> Dict[str, BatchedEnv]:
+    def envs(self) -> Dict[str, BatchedEnv]:
         """The inner `BatchedEnv` instances keyed by env name."""
-        return self._batched_envs
+        return self._envs
 
     @property
     def env_keys(self) -> List[str]:
@@ -99,27 +99,27 @@ class MultiVecEnv:
     @property
     def n_envs(self) -> int:
         """Number of distinct env types (= number of `BatchedEnv` instances)."""
-        return len(self._batched_envs)
+        return len(self._envs)
 
     @property
     def total_slots(self) -> int:
         """Total number of individual agent slots across all env types."""
-        return sum(e.n_slots for e in self._batched_envs.values())
+        return sum(e.n_slots for e in self._envs.values())
 
     @property
     def slots_per_env(self) -> Dict[str, int]:
         """Per-env-type slot counts."""
-        return {k: e.n_slots for k, e in self._batched_envs.items()}
+        return {k: e.n_slots for k, e in self._envs.items()}
 
     @property
     def single_observation_spaces(self) -> Dict[str, Space]:
         """Per-env-type unbatched observation spaces."""
-        return {k: e.single_observation_space for k, e in self._batched_envs.items()}
+        return {k: e.single_observation_space for k, e in self._envs.items()}
 
     @property
     def single_action_spaces(self) -> Dict[str, Space]:
         """Per-env-type unbatched action spaces."""
-        return {k: e.single_action_space for k, e in self._batched_envs.items()}
+        return {k: e.single_action_space for k, e in self._envs.items()}
 
     @property
     def single_observation_shapes(self) -> Dict[str, Tuple[int, ...]]:
@@ -215,7 +215,7 @@ class MultiVecEnv:
         states: Dict[str, chex.ArrayTree] = {}
 
         for i, key in enumerate(self._keys):
-            o, s = self._batched_envs[key].reset(keys[i])
+            o, s = self._envs[key].reset(keys[i])
             obs[key] = o
             states[key] = s
 
@@ -319,7 +319,7 @@ class MultiVecEnv:
         infos: Dict[str, Dict[str, Any]] = {}
 
         for key in self._keys:
-            o, s, r, d, info = self._batched_envs[key].step(states[key], actions[key])
+            o, s, r, d, info = self._envs[key].step(states[key], actions[key])
             obs[key] = o
             new_states[key] = s
             rewards[key] = r
@@ -348,7 +348,7 @@ class MultiVecEnv:
         single_state : chex.ArrayTree
             Unbatched state pytree for the chosen slot.
         """
-        return self._batched_envs[key].slot_state(states[key], slot_idx)
+        return self._envs[key].slot_state(states[key], slot_idx)
 
     def render_slot(
         self, states: Dict[str, chex.ArrayTree], key: str, slot_idx: int
@@ -370,7 +370,7 @@ class MultiVecEnv:
         frame : np.ndarray
             uint8 RGB array of shape `(H, W, 3)`.
         """
-        return self._batched_envs[key].render_slot(states[key], slot_idx)
+        return self._envs[key].render_slot(states[key], slot_idx)
 
     def compile(
         self,
@@ -391,9 +391,9 @@ class MultiVecEnv:
         setup_cache(cache_dir)
 
         it = (
-            tqdm(self._batched_envs.items(), desc="Compiling batched envs", unit="env")
+            tqdm(self._envs.items(), desc="Compiling batched envs", unit="env")
             if progress
-            else self._batched_envs.items()
+            else self._envs.items()
         )
         for _, env in it:
             env.compile(cache_dir=cache_dir)
@@ -402,8 +402,8 @@ class MultiVecEnv:
         _obs, _states = self.reset(_rng)
         _action_keys = jax.random.split(_rng, len(self._keys))
         _dummy_actions = {
-            k: jax.vmap(self._batched_envs[k].single_action_space.sample)(
-                jax.random.split(_action_keys[i], self._batched_envs[k].n_slots)
+            k: jax.vmap(self._envs[k].single_action_space.sample)(
+                jax.random.split(_action_keys[i], self._envs[k].n_slots)
             )
             for i, k in enumerate(self._keys)
         }
@@ -414,6 +414,6 @@ class MultiVecEnv:
 
     def __repr__(self) -> str:
         group_info = ", ".join(
-            f"{k}*{e.n_slots}" for k, e in self._batched_envs.items()
+            f"{k}*{e.n_slots}" for k, e in self._envs.items()
         )
         return f"MultiVecEnv({{{group_info}}}, total_slots={self.total_slots})"

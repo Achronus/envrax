@@ -95,13 +95,13 @@ class TestMultiVecEnv:
         })
         assert multi.slots_per_env == {"vec": 4, "pix": 8}
 
-    def test_batched_envs_property(self):
+    def test_envs_property(self):
         envs = {
             "vec": VecEnv(_VecEnv(config=_CONFIG), _N_ENVS),
             "pix": VecEnv(_PixEnv(config=_CONFIG), _N_ENVS),
         }
         multi = MultiVecEnv(envs)
-        assert set(multi.batched_envs.keys()) == {"vec", "pix"}
+        assert set(multi.envs.keys()) == {"vec", "pix"}
 
     def test_env_keys_preserves_insertion_order(self):
         multi = MultiVecEnv({
