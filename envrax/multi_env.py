@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter
 from math import prod
 from typing import Any, Dict, List, Tuple, Type
 
@@ -11,87 +11,130 @@ from envrax.spaces import Space
 from envrax.wrappers.jit_wrapper import JitWrapper
 
 
-def _build_class_groups(envs: List[JaxEnv]) -> Dict[str, List[int]]:
-    """Group env indices by their class name."""
-    groups: Dict[str, List[int]] = defaultdict(list)
-    for i, env in enumerate(envs):
-        cls_name = type(env).__qualname__
-        groups[cls_name].append(i)
-
-    return dict(groups)
-
-
-class MultiEnv:
+def _auto_key(envs: List[JaxEnv]) -> Dict[str, JaxEnv]:
     """
-    Manages `M` heterogeneous `JaxEnv` instances as a single unit.
-    Useful for holding `M` different `JaxEnv`s — with potentially different
-    classes, configs, and shapes.
+    Derive dict keys from each `JaxEnv.name`, suffixing duplicates.
 
-    Use `.class_groups` to identify which indices share a class for
-    downstream batching of same-shape observations.
+    A unique name is used bare (e.g. `"BallEnv"`); names that appear more
+    than once get a zero-indexed suffix (`"BallEnv_0"`, `"BallEnv_1"`, ...).
 
     Parameters
     ----------
     envs : List[JaxEnv]
-        List of already-constructed environments.
+        Envs to key.
+
+    Returns
+    -------
+    envs_dict : Dict[str, JaxEnv]
+        Derived keys preserving input order.
+    """
+    counts = Counter(env.name for env in envs)
+    counters: Dict[str, int] = {}
+    envs_dict: Dict[str, JaxEnv] = {}
+
+    for env in envs:
+        name = env.name
+        if counts[name] == 1:
+            key = name
+        else:
+            idx = counters.get(name, 0)
+            key = f"{name}_{idx}"
+            counters[name] = idx + 1
+
+        envs_dict[key] = env
+
+    return envs_dict
+
+
+class MultiEnv:
+    """
+    Container for multiple `JaxEnv` instances keyed by env name.
+
+    Holds one inner env per key and dispatches `reset`/`step` via a Python
+    loop. No outer `jax.jit` boundary is added — each inner env keeps its
+    own compile cycle (typically via `JitWrapper`). Use `MultiVecEnv` if
+    you need a single jitted dispatch over batched envs.
+
+    Accepts either a list (keys derived from each env's `name` via
+    `_auto_key`) or a dict (used as-is for explicit control).
+
+    Parameters
+    ----------
+    envs : List[JaxEnv] | Dict[str, JaxEnv]
+        Envs to wrap. When a list, keys are derived from `env.name` with
+        suffixes on duplicates. When a dict, keys are used verbatim.
+        Iteration order is preserved.
     """
 
-    def __init__(self, envs: List[JaxEnv]) -> None:
+    def __init__(
+        self,
+        envs: List[JaxEnv] | Dict[str, JaxEnv],
+    ) -> None:
         if not envs:
             raise ValueError("MultiEnv requires at least one environment.")
 
-        self._envs = envs
-        self._class_groups = _build_class_groups(envs)
+        if isinstance(envs, dict):
+            envs_dict = dict(envs)
+        else:
+            envs_dict = _auto_key(list(envs))
+
+        self._envs: Dict[str, JaxEnv] = envs_dict
+        self._keys: List[str] = list(self._envs.keys())
 
     @property
-    def num_envs(self) -> int:
+    def envs(self) -> Dict[str, JaxEnv]:
+        """The inner `JaxEnv` instances keyed by env name."""
+        return self._envs
+
+    @property
+    def env_keys(self) -> List[str]:
+        """Ordered list of env-type keys."""
+        return list(self._keys)
+
+    @property
+    def n_envs(self) -> int:
         """Number of environments (`M`)."""
         return len(self._envs)
 
     @property
-    def envs(self) -> List[JaxEnv]:
-        """The inner environment instances."""
-        return self._envs
-
-    @property
-    def observation_spaces(self) -> List[Space]:
+    def observation_spaces(self) -> Dict[str, Space]:
         """Per-env observation spaces."""
-        return [env.observation_space for env in self._envs]
+        return {k: e.observation_space for k, e in self._envs.items()}
 
     @property
-    def action_spaces(self) -> List[Space]:
+    def action_spaces(self) -> Dict[str, Space]:
         """Per-env action spaces."""
-        return [env.action_space for env in self._envs]
+        return {k: e.action_space for k, e in self._envs.items()}
 
     @property
-    def observation_shapes(self) -> List[Tuple[int, ...]]:
+    def observation_shapes(self) -> Dict[str, Tuple[int, ...]]:
         """Per-env observation shapes."""
-        return [s.shape for s in self.observation_spaces]
+        return {k: s.shape for k, s in self.observation_spaces.items()}
 
     @property
-    def action_shapes(self) -> List[Tuple[int, ...]]:
+    def action_shapes(self) -> Dict[str, Tuple[int, ...]]:
         """Per-env action shapes."""
-        return [s.shape for s in self.action_spaces]
+        return {k: s.shape for k, s in self.action_spaces.items()}
 
     @property
-    def observation_sizes(self) -> List[int]:
+    def observation_sizes(self) -> Dict[str, int]:
         """Per-env flat observation element counts (`prod(shape)`)."""
-        return [int(prod(s.shape)) for s in self.observation_spaces]
+        return {k: int(prod(s.shape)) for k, s in self.observation_spaces.items()}
 
     @property
-    def action_sizes(self) -> List[int]:
+    def action_sizes(self) -> Dict[str, int]:
         """Per-env flat action element counts (`prod(shape)`)."""
-        return [int(prod(s.shape)) for s in self.action_spaces]
+        return {k: int(prod(s.shape)) for k, s in self.action_spaces.items()}
 
     @property
-    def observation_dtypes(self) -> List[Type]:
+    def observation_dtypes(self) -> Dict[str, Type]:
         """Per-env observation dtypes."""
-        return [s.dtype for s in self.observation_spaces]
+        return {k: s.dtype for k, s in self.observation_spaces.items()}
 
     @property
-    def action_dtypes(self) -> List[Type]:
+    def action_dtypes(self) -> Dict[str, Type]:
         """Per-env action dtypes."""
-        return [s.dtype for s in self.action_spaces]
+        return {k: s.dtype for k, s in self.action_spaces.items()}
 
     def pad_dims(self) -> Tuple[int, int]:
         """
@@ -104,25 +147,19 @@ class MultiEnv:
         observation : int
             Largest flat observation size.
         """
-        return max(self.action_sizes), max(self.observation_sizes)
+        return (
+            max(self.action_sizes.values()),
+            max(self.observation_sizes.values()),
+        )
 
-    @property
-    def class_groups(self) -> Dict[str, List[int]]:
+    def reset(
+        self, rng: chex.PRNGKey
+    ) -> Tuple[Dict[str, jax.Array], Dict[str, EnvState]]:
         """
-        Env class name → list of indices.
+        Reset all environments with independent PRNG sub-keys.
 
-        Useful for downstream code that wants to batch operations across
-        envs of the same class (e.g. stacking observations with matching
-        shapes).
-        """
-        return self._class_groups
-
-    def reset(self, rng: chex.PRNGKey) -> Tuple[List[jax.Array], List[EnvState]]:
-        """
-        Reset all `M` environments with independent PRNG keys.
-
-        Splits `rng` into `M` sub-keys deterministically. Same master key
-        produces the same per-env keys for full reproducibility.
+        Splits `rng` deterministically. Same master key produces the same
+        per-env keys for full reproducibility.
 
         Parameters
         ----------
@@ -131,131 +168,88 @@ class MultiEnv:
 
         Returns
         -------
-        observations : List[jax.Array]
-            Per-env initial observations
-        states : List[EnvState]
-            Per-env initial states
+        obs : Dict[str, jax.Array]
+            Per-env initial observations.
+        states : Dict[str, EnvState]
+            Per-env initial states.
         """
-        rngs = jax.random.split(rng, self.num_envs)
-        obs_list: List[jax.Array] = []
-        state_list: List[EnvState] = []
+        keys = jax.random.split(rng, len(self._keys))
+        obs: Dict[str, jax.Array] = {}
+        states: Dict[str, EnvState] = {}
 
-        for i, env in enumerate(self._envs):
-            obs, state = env.reset(rngs[i])
-            obs_list.append(obs)
-            state_list.append(state)
+        for i, key in enumerate(self._keys):
+            o, s = self._envs[key].reset(keys[i])
+            obs[key] = o
+            states[key] = s
 
-        return obs_list, state_list
+        return obs, states
 
     def step(
         self,
-        states: List[EnvState],
-        actions: List[jax.Array],
+        states: Dict[str, EnvState],
+        actions: Dict[str, jax.Array],
     ) -> Tuple[
-        List[jax.Array],
-        List[EnvState],
-        List[jax.Array],
-        List[jax.Array],
-        List[Dict[str, Any]],
+        Dict[str, jax.Array],
+        Dict[str, EnvState],
+        Dict[str, jax.Array],
+        Dict[str, jax.Array],
+        Dict[str, Dict[str, Any]],
     ]:
         """
-        Step all `M` environments simultaneously.
+        Step all environments simultaneously.
 
         Parameters
         ----------
-        states : List[EnvState]
-            Per-env states from a previous reset or step
-        actions : List[jax.Array]
-            Per-env actions matching each env's action space
+        states : Dict[str, EnvState]
+            Per-env states from a previous reset or step.
+        actions : Dict[str, jax.Array]
+            Per-env actions matching each env's action space.
 
         Returns
         -------
-        observations : List[jax.Array]
-            Per-env observations after the step
-        new_states : List[EnvState]
-            Per-env updated states
-        rewards : List[jax.Array]
-            Per-env scalar rewards
-        dones : List[jax.Array]
-            Per-env terminal flags
-        infos : List[Dict[str, Any]]
-            Per-env info dicts
+        obs : Dict[str, jax.Array]
+            Per-env observations after the step.
+        new_states : Dict[str, EnvState]
+            Per-env updated states.
+        rewards : Dict[str, jax.Array]
+            Per-env scalar rewards.
+        dones : Dict[str, jax.Array]
+            Per-env terminal flags.
+        infos : Dict[str, Dict[str, Any]]
+            Per-env info dicts.
 
         Raises
         ------
-        length_mismatch : ValueError
-            If `len(states)` or `len(actions)` does not match `num_envs`.
+        key_mismatch : ValueError
+            If `states` or `actions` keys do not match `env_keys`.
         """
-        if len(states) != self.num_envs or len(actions) != self.num_envs:
+        if set(states.keys()) != set(self._keys):
             raise ValueError(
-                f"MultiEnv.step: expected {self.num_envs} states and actions, "
-                f"got {len(states)} states and {len(actions)} actions."
+                f"MultiEnv.step: `states` keys {sorted(states.keys())} "
+                f"do not match env keys {sorted(self._keys)}."
             )
 
-        results = [
-            env.step(state, action)
-            for env, state, action in zip(self._envs, states, actions)
-        ]
-        return (
-            [r[0] for r in results],
-            [r[1] for r in results],
-            [r[2] for r in results],
-            [r[3] for r in results],
-            [r[4] for r in results],
-        )
+        if set(actions.keys()) != set(self._keys):
+            raise ValueError(
+                f"MultiEnv.step: `actions` keys {sorted(actions.keys())} "
+                f"do not match env keys {sorted(self._keys)}."
+            )
 
-    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[jax.Array, EnvState]:
-        """
-        Reset a single environment by index.
+        obs: Dict[str, jax.Array] = {}
+        new_states: Dict[str, EnvState] = {}
+        rewards: Dict[str, jax.Array] = {}
+        dones: Dict[str, jax.Array] = {}
+        infos: Dict[str, Dict[str, Any]] = {}
 
-        Parameters
-        ----------
-        idx : int
-            Index of the environment to reset
-        rng : chex.PRNGKey
-            JAX PRNG key for the reset
+        for key in self._keys:
+            o, s, r, d, info = self._envs[key].step(states[key], actions[key])
+            obs[key] = o
+            new_states[key] = s
+            rewards[key] = r
+            dones[key] = d
+            infos[key] = info
 
-        Returns
-        -------
-        obs : jax.Array
-            Initial observation
-        state : EnvState
-            Initial state
-        """
-        return self._envs[idx].reset(rng)
-
-    def step_at(
-        self,
-        idx: int,
-        state: EnvState,
-        action: jax.Array,
-    ) -> Tuple[jax.Array, EnvState, jax.Array, jax.Array, Dict[str, Any]]:
-        """
-        Step a single environment by index.
-
-        Parameters
-        ----------
-        idx : int
-            Index of the environment to step
-        state : EnvState
-            Current state of the environment
-        action : jax.Array
-            Action to take
-
-        Returns
-        -------
-        obs : jax.Array
-            Observation after the step
-        new_state : EnvState
-            Updated state
-        reward : jax.Array
-            Scalar reward
-        done : jax.Array
-            Terminal flag
-        info : Dict[str, Any]
-            Info dict
-        """
-        return self._envs[idx].step(state, action)
+        return obs, new_states, rewards, dones, infos
 
     def compile(self, *, progress: bool = True) -> None:
         """
@@ -270,18 +264,20 @@ class MultiEnv:
             Show a `tqdm` progress bar. Default is `True`.
         """
         jit_envs = [
-            (i, env) for i, env in enumerate(self._envs) if isinstance(env, JitWrapper)
+            (k, env) for k, env in self._envs.items() if isinstance(env, JitWrapper)
         ]
         if not jit_envs:
             return
 
-        it = tqdm(jit_envs, desc="Compiling envs", unit="env") if progress else jit_envs
+        it = (
+            tqdm(jit_envs, desc="Compiling envs", unit="env") if progress else jit_envs
+        )
         for _, env in it:
             env.compile()
 
     def __len__(self) -> int:
-        return len(self._envs)
+        return self.n_envs
 
     def __repr__(self) -> str:
-        env_info = ", ".join(type(e).__name__ for e in self._envs)
-        return f"MultiEnv([{env_info}], num_envs={self.num_envs})"
+        group_info = ", ".join(f"{k}={type(e).__name__}" for k, e in self._envs.items())
+        return f"MultiEnv({{{group_info}}}, n_envs={self.n_envs})"
