@@ -113,6 +113,11 @@ class Wrapper(JaxEnv[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         """Return the innermost `JaxEnv` by delegating through the wrapper chain."""
         return self._env.unwrapped if isinstance(self._env, Wrapper) else self._env
 
+    @property
+    def name(self) -> str:
+        """Inner environment's `name`, so wrapper layers are transparent."""
+        return self._env.name
+
     def render(self, state: StateT, **kwargs: Any) -> np.ndarray:
         """Forward render to the inner environment."""
         return self._env.render(state, **kwargs)

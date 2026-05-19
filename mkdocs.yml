@@ -73,8 +73,9 @@ nav:
           - Creating a Custom Space: tutorials/advanced/custom-spaces.md
   - API Reference:
       - API Reference: api/index.md
-      - Environments: 
+      - Environments:
         - Single Environment: api/env/base.md
+        - Batched Environment: api/env/batched.md
         - Vectorised: api/env/vec.md
         - Multi-Environment: api/env/multi.md
       - Spaces: api/spaces.md

@@ -1,6 +1,7 @@
 import chex
 import jax
 import jax.numpy as jnp
+import pytest
 
 from envrax.env import EnvConfig, EnvState, JaxEnv
 from envrax.multi_env import MultiEnv
@@ -65,176 +66,186 @@ _RNG = jax.random.key(0)
 _CONFIG = EnvConfig(max_steps=10)
 
 
-class TestMultiEnv:
-    def test_num_envs(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        assert multi.num_envs == 2
-        assert len(multi) == 2
+def _build_multi() -> MultiEnv:
+    return MultiEnv({
+        "vec": _VecEnv(config=_CONFIG),
+        "pix": _PixEnv(config=_CONFIG),
+    })
 
-    def test_envs_property(self):
-        envs = [_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)]
-        multi = MultiEnv(envs)
-        assert multi.envs is envs
+
+class TestMultiEnv:
+    def test_n_envs(self):
+        assert _build_multi().n_envs == 2
+        assert len(_build_multi()) == 2
+
+    def test_envs_property_is_dict(self):
+        multi = _build_multi()
+        assert isinstance(multi.envs, dict)
+        assert set(multi.envs.keys()) == {"vec", "pix"}
+
+    def test_env_keys_preserves_insertion_order(self):
+        multi = MultiEnv({
+            "z": _VecEnv(config=_CONFIG),
+            "a": _PixEnv(config=_CONFIG),
+        })
+        assert multi.env_keys == ["z", "a"]
 
     def test_observation_spaces(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        spaces = multi.observation_spaces
-        assert len(spaces) == 2
-        assert spaces[0].shape == (4,)
-        assert spaces[1].shape == (4, 4, 3)
+        spaces = _build_multi().observation_spaces
+        assert spaces["vec"].shape == (4,)
+        assert spaces["pix"].shape == (4, 4, 3)
 
     def test_action_spaces(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        spaces = multi.action_spaces
-        assert spaces[0].n == 2
-        assert spaces[1].n == 3
+        spaces = _build_multi().action_spaces
+        assert spaces["vec"].n == 2
+        assert spaces["pix"].n == 3
 
-    def test_reset_returns_lists(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        obs_list, state_list = multi.reset(_RNG)
-        assert isinstance(obs_list, list)
-        assert isinstance(state_list, list)
-        assert len(obs_list) == 2
-        assert len(state_list) == 2
+    def test_reset_returns_dicts(self):
+        obs, states = _build_multi().reset(_RNG)
+        assert isinstance(obs, dict)
+        assert isinstance(states, dict)
+        assert set(obs.keys()) == {"vec", "pix"}
+        assert set(states.keys()) == {"vec", "pix"}
 
     def test_reset_obs_shapes_match_spaces(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        obs_list, _ = multi.reset(_RNG)
-        assert obs_list[0].shape == (4,)
-        assert obs_list[1].shape == (4, 4, 3)
+        obs, _ = _build_multi().reset(_RNG)
+        assert obs["vec"].shape == (4,)
+        assert obs["pix"].shape == (4, 4, 3)
 
     def test_reset_deterministic_same_seed(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG)])
+        multi = MultiEnv({"only": _VecEnv(config=_CONFIG)})
         obs1, _ = multi.reset(_RNG)
         obs2, _ = multi.reset(_RNG)
-        assert jnp.array_equal(obs1[0], obs2[0])
+        assert jnp.array_equal(obs1["only"], obs2["only"])
 
     def test_step_returns_correct_structure(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
+        multi = _build_multi()
         _, states = multi.reset(_RNG)
-        actions = [jnp.int32(0), jnp.int32(0)]
+        actions = {"vec": jnp.int32(0), "pix": jnp.int32(0)}
         obs, new_states, rewards, dones, infos = multi.step(states, actions)
-        assert len(obs) == 2
-        assert len(new_states) == 2
-        assert len(rewards) == 2
-        assert len(dones) == 2
-        assert len(infos) == 2
+        assert set(obs.keys()) == {"vec", "pix"}
+        assert set(rewards.keys()) == {"vec", "pix"}
+        assert set(dones.keys()) == {"vec", "pix"}
+        assert set(infos.keys()) == {"vec", "pix"}
 
     def test_step_obs_shapes(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
+        multi = _build_multi()
         _, states = multi.reset(_RNG)
-        actions = [jnp.int32(0), jnp.int32(0)]
+        actions = {"vec": jnp.int32(0), "pix": jnp.int32(0)}
         obs, _, _, _, _ = multi.step(states, actions)
-        assert obs[0].shape == (4,)
-        assert obs[1].shape == (4, 4, 3)
+        assert obs["vec"].shape == (4,)
+        assert obs["pix"].shape == (4, 4, 3)
 
-    def test_reset_at(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        obs, state = multi.reset_at(1, _RNG)
+    def test_per_env_access_via_envs_dict(self):
+        multi = _build_multi()
+        single = multi.envs["pix"]
+        obs, state = single.reset(_RNG)
         assert obs.shape == (4, 4, 3)
+        assert int(state.step) == 0
 
-    def test_step_at(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG)])
+    def test_empty_raises(self):
+        with pytest.raises(ValueError, match="at least one"):
+            MultiEnv([])
+
+    def test_step_mismatched_state_keys_raises(self):
+        multi = _build_multi()
         _, states = multi.reset(_RNG)
-        obs, new_state, reward, done, info = multi.step_at(0, states[0], jnp.int32(0))
-        assert obs.shape == (4,)
-        assert int(new_state.step) == 1
+        actions = {"vec": jnp.int32(0), "pix": jnp.int32(0)}
+        states_bad = {"vec": states["vec"]}  # missing "pix"
+        with pytest.raises(ValueError, match="`states` keys"):
+            multi.step(states_bad, actions)
 
-    def test_class_groups_same_class(self):
+    def test_step_mismatched_action_keys_raises(self):
+        multi = _build_multi()
+        _, states = multi.reset(_RNG)
+        actions_bad = {"vec": jnp.int32(0)}  # missing "pix"
+        with pytest.raises(ValueError, match="`actions` keys"):
+            multi.step(states, actions_bad)
+
+    def test_compile_with_jit_wrapped_envs(self):
+        from envrax.wrappers import JitWrapper
+
+        multi = MultiEnv({
+            "vec": JitWrapper(_VecEnv(config=_CONFIG), cache_dir=None, pre_warm=False),
+            "pix": JitWrapper(_PixEnv(config=_CONFIG), cache_dir=None, pre_warm=False),
+        })
+        multi.compile(progress=False)
+        obs, _ = multi.reset(_RNG)
+        assert obs["vec"].shape == (4,)
+        assert obs["pix"].shape == (4, 4, 3)
+
+    def test_compile_skips_non_jit_envs(self):
+        multi = MultiEnv({"only": _VecEnv(config=_CONFIG)})
+        multi.compile(progress=False)  # should not raise
+
+    def test_repr(self):
+        r = repr(_build_multi())
+        assert "MultiEnv" in r
+        assert "vec" in r
+        assert "pix" in r
+
+
+class TestMultiEnvAutoKeying:
+    def test_list_input_uses_env_name_as_key(self):
+        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
+        assert multi.env_keys == ["_VecEnv", "_PixEnv"]
+
+    def test_list_input_suffixes_duplicates(self):
         multi = MultiEnv([
             _VecEnv(config=_CONFIG),
             _VecEnv(config=_CONFIG),
             _PixEnv(config=_CONFIG),
         ])
-        groups = multi.class_groups
-        assert "_VecEnv" in groups
-        assert "_PixEnv" in groups
-        assert groups["_VecEnv"] == [0, 1]
-        assert groups["_PixEnv"] == [2]
+        assert multi.env_keys == ["_VecEnv_0", "_VecEnv_1", "_PixEnv"]
 
-    def test_empty_raises(self):
-        import pytest
+    def test_list_input_all_duplicates_all_suffixed(self):
+        multi = MultiEnv([_VecEnv(config=_CONFIG)] * 3)
+        assert multi.env_keys == ["_VecEnv_0", "_VecEnv_1", "_VecEnv_2"]
 
-        with pytest.raises(ValueError, match="at least one"):
-            MultiEnv([])
+    def test_dict_input_preserves_explicit_keys(self):
+        multi = MultiEnv({
+            "task_a": _VecEnv(config=_CONFIG),
+            "task_b": _VecEnv(config=_CONFIG),
+        })
+        assert multi.env_keys == ["task_a", "task_b"]
 
-    def test_step_too_few_actions_raises(self):
-        import pytest
-
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        _, states = multi.reset(_RNG)
-        actions = [jnp.int32(0)]   # only 1, expected 2
-
-        with pytest.raises(ValueError, match="expected 2 states and actions"):
-            multi.step(states, actions)
-
-    def test_step_too_many_states_raises(self):
-        import pytest
-
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        _, states = multi.reset(_RNG)
-        actions = [jnp.int32(0), jnp.int32(0)]
-        states = states + [states[0]]   # 3 states, expected 2
-
-        with pytest.raises(ValueError, match="got 3 states and 2 actions"):
-            multi.step(states, actions)
-
-    def test_compile_with_jit_wrapped_envs(self):
+    def test_wrapper_delegates_name(self):
+        """JitWrapper.name should delegate to inner env, not return 'JitWrapper'."""
         from envrax.wrappers import JitWrapper
 
-        envs = [
-            JitWrapper(_VecEnv(config=_CONFIG), cache_dir=None, pre_warm=False),
-            JitWrapper(_PixEnv(config=_CONFIG), cache_dir=None, pre_warm=False),
-        ]
-        multi = MultiEnv(envs)
-        multi.compile(progress=False)
-        # Should work after compile
-        obs_list, _ = multi.reset(_RNG)
-        assert obs_list[0].shape == (4,)
-        assert obs_list[1].shape == (4, 4, 3)
+        wrapped = JitWrapper(_VecEnv(config=_CONFIG), cache_dir=None, pre_warm=False)
+        assert wrapped.name == "_VecEnv"
 
-    def test_compile_skips_non_jit_envs(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG)])
-        # Should not raise — silently skips non-JitWrapper envs
-        multi.compile(progress=False)
-
-    def test_repr(self):
-        multi = MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-        r = repr(multi)
-        assert "MultiEnv" in r
-        assert "_VecEnv" in r
-        assert "_PixEnv" in r
+        multi = MultiEnv([wrapped])
+        assert multi.env_keys == ["_VecEnv"]
 
 
 class TestMultiEnvHelpers:
-    def _multi(self) -> MultiEnv:
-        return MultiEnv([_VecEnv(config=_CONFIG), _PixEnv(config=_CONFIG)])
-
     def test_observation_shapes(self):
-        assert self._multi().observation_shapes == [(4,), (4, 4, 3)]
+        assert _build_multi().observation_shapes == {"vec": (4,), "pix": (4, 4, 3)}
 
     def test_action_shapes(self):
-        assert self._multi().action_shapes == [(), ()]
+        assert _build_multi().action_shapes == {"vec": (), "pix": ()}
 
     def test_observation_sizes(self):
-        assert self._multi().observation_sizes == [4, 48]
+        assert _build_multi().observation_sizes == {"vec": 4, "pix": 48}
 
     def test_action_sizes(self):
-        assert self._multi().action_sizes == [1, 1]
+        assert _build_multi().action_sizes == {"vec": 1, "pix": 1}
 
     def test_observation_dtypes(self):
-        assert self._multi().observation_dtypes == [jnp.float32, jnp.uint8]
+        assert _build_multi().observation_dtypes == {"vec": jnp.float32, "pix": jnp.uint8}
 
     def test_action_dtypes(self):
-        assert self._multi().action_dtypes == [jnp.int32, jnp.int32]
+        assert _build_multi().action_dtypes == {"vec": jnp.int32, "pix": jnp.int32}
 
     def test_pad_dims_returns_max_action_and_observation(self):
-        action, observation = self._multi().pad_dims()
+        action, observation = _build_multi().pad_dims()
         assert action == 1
         assert observation == 48
 
     def test_pad_dims_returns_tuple_of_ints(self):
-        result = self._multi().pad_dims()
+        result = _build_multi().pad_dims()
         assert isinstance(result, tuple)
         assert len(result) == 2
         assert all(isinstance(x, int) for x in result)

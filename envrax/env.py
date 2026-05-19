@@ -78,6 +78,23 @@ class JaxEnv(ABC, Generic[ObsSpaceT, ActSpaceT, StateT, ConfigT]):
         self.config = config  # type: ignore
 
     @property
+    def name(self) -> str:
+        """
+        Default identifier used by `MultiEnv` and `MultiVecEnv` when keys
+        aren't supplied explicitly.
+
+        Subclasses can override this to provide a more meaningful name.
+        Wrappers delegate to the inner environment so the underlying env's
+        name is preserved.
+
+        Returns
+        -------
+        name : str
+            Short identifier for this environment.
+        """
+        return type(self).__name__
+
+    @property
     @abstractmethod
     def observation_space(self) -> ObsSpaceT:
         """Returns the observation space."""

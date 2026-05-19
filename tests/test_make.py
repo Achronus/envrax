@@ -173,19 +173,25 @@ class TestMakeVec:
 
 class TestMakeMulti:
     def test_returns_multi_env(self):
-        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
+        multi = make_multi({
+            "a": make(_ENV_NAME, jit_compile=False),
+            "b": make(_ENV_NAME, jit_compile=False),
+        })
         assert isinstance(multi, MultiEnv)
-        assert multi.num_envs == 2
+        assert multi.n_envs == 2
 
     def test_envs_are_correct_type(self):
-        multi = make_multi([_ENV_NAME], jit_compile=False)
-        assert isinstance(multi.envs[0], _PixEnv)
+        multi = make_multi({"main": make(_ENV_NAME, jit_compile=False)})
+        assert isinstance(multi.envs["main"], _PixEnv)
 
     def test_reset_works(self):
-        multi = make_multi([_ENV_NAME, _ENV_NAME], jit_compile=False)
-        obs_list, _ = multi.reset(_RNG)
-        assert len(obs_list) == 2
-        assert obs_list[0].shape == (8, 8, 3)
+        multi = make_multi({
+            "a": make(_ENV_NAME, jit_compile=False),
+            "b": make(_ENV_NAME, jit_compile=False),
+        })
+        obs, _ = multi.reset(_RNG)
+        assert set(obs.keys()) == {"a", "b"}
+        assert obs["a"].shape == (8, 8, 3)
 
 
 # ---------------------------------------------------------------------------
@@ -195,24 +201,34 @@ class TestMakeMulti:
 
 class TestMakeMultiVec:
     def test_returns_multi_vec_env(self):
-        multi = make_multi_vec([_ENV_NAME, _ENV_NAME], n_envs=2, jit_compile=False)
+        multi = make_multi_vec(
+            {
+                "a": make_vec(_ENV_NAME, 2, jit_compile=False),
+                "b": make_vec(_ENV_NAME, 2, jit_compile=False),
+            },
+            jit_compile=False,
+        )
         assert isinstance(multi, MultiVecEnv)
-        assert multi.num_envs == 2
+        assert multi.n_envs == 2
 
     def test_vec_envs_are_correct(self):
-        multi = make_multi_vec([_ENV_NAME], n_envs=4, jit_compile=False)
-        assert isinstance(multi.vec_envs[0], VecEnv)
-        assert multi.vec_envs[0].num_envs == 4
-        assert multi.total_envs == 4
+        multi = make_multi_vec(
+            {"main": make_vec(_ENV_NAME, 4, jit_compile=False)},
+            jit_compile=False,
+        )
+        assert isinstance(multi.envs["main"], VecEnv)
+        assert multi.envs["main"].n_slots == 4
+        assert multi.total_slots == 4
 
     def test_pre_warm_compiles_each_vec(self):
-        # pre_warm defaults to False here — explicitly enable to hit compile() path
         multi = make_multi_vec(
-            [_ENV_NAME, _ENV_NAME],
-            n_envs=2,
+            {
+                "a": make_vec(_ENV_NAME, 2, jit_compile=False),
+                "b": make_vec(_ENV_NAME, 2, jit_compile=False),
+            },
             jit_compile=True,
             pre_warm=True,
         )
         assert isinstance(multi, MultiVecEnv)
-        obs_list, _ = multi.reset(jax.random.key(0))
-        chex.assert_shape(obs_list[0], (2, 8, 8, 3))
+        obs, _ = multi.reset(jax.random.key(0))
+        chex.assert_shape(obs["a"], (2, 8, 8, 3))

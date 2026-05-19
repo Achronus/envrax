@@ -1,6 +1,6 @@
 [project]
 name = "envrax"
-version = "0.1.9"
+version = "0.1.10"
 description = "Gymnasium-style API standard for RL environment creation in JAX."
 authors = [{ name = "Ryan Partridge", email = "codemonkey37@proton.me" }]
 readme = "README.md"
@@ -52,5 +52,19 @@ exclude-dependencies = ["uvloop"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = [".venv"]
-addopts = "-n auto"
+addopts = "-n auto --cov=envrax --cov-report=term-missing"
 filterwarnings = ["ignore::UserWarning:jax", "ignore::UserWarning:jaxlib"]
+
+[tool.coverage.run]
+source = ["envrax"]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+]

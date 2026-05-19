@@ -1,144 +1,179 @@
-from collections import defaultdict
+from collections import Counter
 from math import prod
+from pathlib import Path
 from typing import Any, Dict, List, Tuple, Type
 
 import chex
 import jax
+import numpy as np
 from tqdm import tqdm
 
-from envrax.env import EnvState
+from envrax._compile import DEFAULT_CACHE_DIR, setup_cache
+from envrax.batched_env import BatchedEnv
 from envrax.spaces import Space
-from envrax.vec_env import VecEnv
 
 
-def _build_class_groups(vec_envs: List[VecEnv]) -> Dict[str, List[int]]:
-    """Group VecEnv indices by their inner env's class name."""
-    groups: Dict[str, List[int]] = defaultdict(list)
-    for i, vec in enumerate(vec_envs):
-        cls_name = type(vec.env).__qualname__
-        groups[cls_name].append(i)
+def _auto_key(envs: List[BatchedEnv]) -> Dict[str, BatchedEnv]:
+    """
+    Derive dict keys from each `BatchedEnv.name`, suffixing duplicates.
 
-    return dict(groups)
+    A unique name is used bare (e.g. `"CartpoleBalanceEnv"`); names that
+    appear more than once get a zero-indexed suffix
+    (`"CartpoleBalanceEnv_0"`, `"CartpoleBalanceEnv_1"`, ...).
+
+    Parameters
+    ----------
+    envs : List[BatchedEnv]
+        Envs to key.
+
+    Returns
+    -------
+    envs_dict : Dict[str, BatchedEnv]
+        Derived keys preserving input order.
+    """
+    counts = Counter(env.name for env in envs)
+    counters: Dict[str, int] = {}
+    envs_dict: Dict[str, BatchedEnv] = {}
+
+    for env in envs:
+        name = env.name
+        if counts[name] == 1:
+            key = name
+        else:
+            idx = counters.get(name, 0)
+            key = f"{name}_{idx}"
+            counters[name] = idx + 1
+
+        envs_dict[key] = env
+
+    return envs_dict
 
 
 class MultiVecEnv:
     """
-    Manages `M` heterogeneous `VecEnv` instances as a single unit.
-    Useful for holding `M` different `VecEnv`s — with potentially different
-    classes, configs, and shapes.
+    JAX-native container for multiple `BatchedEnv` instances keyed by env name.
 
-    Use `.class_groups` to identify which indices share an inner env
-    class for downstream batching.
+    State is a dict-of-pytrees (`Dict[str, chex.ArrayTree]`). The
+    cross-env-type dispatch runs as a Python loop at `jax.jit` trace time,
+    producing one XLA computation per call that dispatches one inner-kernel
+    per env type with no per-call Python overhead between them.
+
+    Accepts either a list (keys derived from each env's `name` via
+    `_auto_key`) or a dict (used as-is for explicit control).
 
     Parameters
     ----------
-    vec_envs : List[VecEnv]
-        List of already-constructed vectorised environments.
+    envs : List[BatchedEnv] | Dict[str, BatchedEnv]
+        Envs to wrap. When a list, keys are derived from `env.name` with
+        suffixes on duplicates. When a dict, keys are used verbatim.
+        Iteration order is preserved.
     """
 
-    def __init__(self, vec_envs: List[VecEnv]) -> None:
-        if not vec_envs:
-            raise ValueError("MultiVecEnv requires at least one VecEnv.")
+    def __init__(
+        self,
+        envs: List[BatchedEnv] | Dict[str, BatchedEnv],
+    ) -> None:
+        if not envs:
+            raise ValueError("MultiVecEnv requires at least one 'BatchedEnv'.")
 
-        self._vec_envs = vec_envs
-        self._class_groups = _build_class_groups(vec_envs)
+        if isinstance(envs, dict):
+            envs_dict = dict(envs)
+        else:
+            envs_dict = _auto_key(list(envs))
 
-    @property
-    def num_envs(self) -> int:
-        """Number of VecEnv groups (`M`)."""
-        return len(self._vec_envs)
-
-    @property
-    def total_envs(self) -> int:
-        """Total number of individual environments across all groups."""
-        return sum(v.num_envs for v in self._vec_envs)
-
-    @property
-    def vec_envs(self) -> List[VecEnv]:
-        """The inner VecEnv instances."""
-        return self._vec_envs
+        self._envs: Dict[str, BatchedEnv] = envs_dict
+        self._keys: List[str] = list(self._envs.keys())
+        self._jit_reset = jax.jit(self._reset_impl)
+        self._jit_step = jax.jit(self._step_impl)
 
     @property
-    def observation_spaces(self) -> List[Space]:
-        """Per-group batched observation spaces."""
-        return [v.observation_space for v in self._vec_envs]
+    def envs(self) -> Dict[str, BatchedEnv]:
+        """The inner `BatchedEnv` instances keyed by env name."""
+        return self._envs
 
     @property
-    def action_spaces(self) -> List[Space]:
-        """Per-group batched action spaces."""
-        return [v.action_space for v in self._vec_envs]
+    def env_keys(self) -> List[str]:
+        """Ordered list of env-type keys."""
+        return list(self._keys)
 
     @property
-    def single_observation_spaces(self) -> List[Space]:
-        """Per-group unbatched observation spaces."""
-        return [v.single_observation_space for v in self._vec_envs]
+    def n_envs(self) -> int:
+        """Number of distinct env types (= number of `BatchedEnv` instances)."""
+        return len(self._envs)
 
     @property
-    def single_action_spaces(self) -> List[Space]:
-        """Per-group unbatched action spaces."""
-        return [v.single_action_space for v in self._vec_envs]
+    def total_slots(self) -> int:
+        """Total number of individual agent slots across all env types."""
+        return sum(e.n_slots for e in self._envs.values())
 
     @property
-    def single_observation_shapes(self) -> List[Tuple[int, ...]]:
-        """Per-group unbatched observation shapes."""
-        return [s.shape for s in self.single_observation_spaces]
+    def slots_per_env(self) -> Dict[str, int]:
+        """Per-env-type slot counts."""
+        return {k: e.n_slots for k, e in self._envs.items()}
 
     @property
-    def single_action_shapes(self) -> List[Tuple[int, ...]]:
-        """Per-group unbatched action shapes."""
-        return [s.shape for s in self.single_action_spaces]
+    def single_observation_spaces(self) -> Dict[str, Space]:
+        """Per-env-type unbatched observation spaces."""
+        return {k: e.single_observation_space for k, e in self._envs.items()}
 
     @property
-    def single_observation_sizes(self) -> List[int]:
-        """Per-group flat unbatched observation element counts (`prod(shape)`)."""
-        return [int(prod(s.shape)) for s in self.single_observation_spaces]
+    def single_action_spaces(self) -> Dict[str, Space]:
+        """Per-env-type unbatched action spaces."""
+        return {k: e.single_action_space for k, e in self._envs.items()}
 
     @property
-    def single_action_sizes(self) -> List[int]:
-        """Per-group flat unbatched action element counts (`prod(shape)`)."""
-        return [int(prod(s.shape)) for s in self.single_action_spaces]
+    def single_observation_shapes(self) -> Dict[str, Tuple[int, ...]]:
+        """Per-env-type unbatched observation shapes."""
+        return {k: s.shape for k, s in self.single_observation_spaces.items()}
 
     @property
-    def single_observation_dtypes(self) -> List[Type]:
-        """Per-group unbatched observation dtypes."""
-        return [s.dtype for s in self.single_observation_spaces]
+    def single_action_shapes(self) -> Dict[str, Tuple[int, ...]]:
+        """Per-env-type unbatched action shapes."""
+        return {k: s.shape for k, s in self.single_action_spaces.items()}
 
     @property
-    def single_action_dtypes(self) -> List[Type]:
-        """Per-group unbatched action dtypes."""
-        return [s.dtype for s in self.single_action_spaces]
+    def single_observation_sizes(self) -> Dict[str, int]:
+        """Per-env-type flat unbatched observation element counts."""
+        return {
+            k: int(prod(s.shape)) for k, s in self.single_observation_spaces.items()
+        }
+
+    @property
+    def single_action_sizes(self) -> Dict[str, int]:
+        """Per-env-type flat unbatched action element counts."""
+        return {k: int(prod(s.shape)) for k, s in self.single_action_spaces.items()}
+
+    @property
+    def single_observation_dtypes(self) -> Dict[str, Type]:
+        """Per-env-type unbatched observation dtypes."""
+        return {k: s.dtype for k, s in self.single_observation_spaces.items()}
+
+    @property
+    def single_action_dtypes(self) -> Dict[str, Type]:
+        """Per-env-type unbatched action dtypes."""
+        return {k: s.dtype for k, s in self.single_action_spaces.items()}
 
     def pad_dims(self) -> Tuple[int, int]:
         """
-        Return `(max_action_size, max_observation_size)` across groups.
-
-        Sizes are flat element counts of the unbatched per-group spaces.
+        Return `(max_action_size, max_observation_size)` across env types.
 
         Returns
         -------
         action : int
-            Largest flat action size.
+            Largest flat action size across all env types.
         observation : int
-            Largest flat observation size.
+            Largest flat observation size across all env types.
         """
-        return max(self.single_action_sizes), max(self.single_observation_sizes)
+        return (
+            max(self.single_action_sizes.values()),
+            max(self.single_observation_sizes.values()),
+        )
 
-    @property
-    def class_groups(self) -> Dict[str, List[int]]:
+    def reset(
+        self, rng: chex.PRNGKey
+    ) -> Tuple[Dict[str, jax.Array], Dict[str, chex.ArrayTree]]:
         """
-        Inner env class name → list of VecEnv indices.
-
-        Useful for downstream code that wants to batch operations across
-        groups sharing the same inner env class.
-        """
-        return self._class_groups
-
-    def reset(self, rng: chex.PRNGKey) -> Tuple[List[jax.Array], List[EnvState]]:
-        """
-        Reset all `M` vectorised environment groups with independent PRNG keys.
-
-        Each `VecEnv` receives one sub-key and splits it internally across
-        its own parallel copies.
+        Reset all env types with independent PRNG sub-keys.
 
         Parameters
         ----------
@@ -147,157 +182,238 @@ class MultiVecEnv:
 
         Returns
         -------
-        observations : List[jax.Array]
-            Per-group batched observations
-        states : List[EnvState]
-            Per-group batched states
+        obs : Dict[str, jax.Array]
+            Per-env-type batched observations.
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched state pytrees.
         """
-        rngs = jax.random.split(rng, self.num_envs)
-        obs_list: List[jax.Array] = []
-        state_list: List[EnvState] = []
+        return self._jit_reset(rng)
 
-        for i, vec in enumerate(self._vec_envs):
-            obs, state = vec.reset(rngs[i])
-            obs_list.append(obs)
-            state_list.append(state)
+    def _reset_impl(
+        self, rng: chex.PRNGKey
+    ) -> Tuple[Dict[str, jax.Array], Dict[str, chex.ArrayTree]]:
+        """
+        Unjitted body of `reset`. Wrapped by `self._jit_reset` in `__init__`.
 
-        return obs_list, state_list
+        Splits `rng` into one sub-key per env type and traces each inner
+        env's `reset` into the same XLA computation at jit time.
+
+        Parameters
+        ----------
+        rng : chex.PRNGKey
+            JAX PRNG key
+
+        Returns
+        -------
+        obs : Dict[str, jax.Array]
+            Per-env-type batched observations.
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched state pytrees.
+        """
+        keys = jax.random.split(rng, len(self._keys))
+        obs: Dict[str, jax.Array] = {}
+        states: Dict[str, chex.ArrayTree] = {}
+
+        for i, key in enumerate(self._keys):
+            o, s = self._envs[key].reset(keys[i])
+            obs[key] = o
+            states[key] = s
+
+        return obs, states
 
     def step(
         self,
-        states: List[EnvState],
-        actions: List[jax.Array],
+        states: Dict[str, chex.ArrayTree],
+        actions: Dict[str, jax.Array],
     ) -> Tuple[
-        List[jax.Array],
-        List[EnvState],
-        List[jax.Array],
-        List[jax.Array],
-        List[Dict[str, Any]],
+        Dict[str, jax.Array],
+        Dict[str, chex.ArrayTree],
+        Dict[str, jax.Array],
+        Dict[str, jax.Array],
+        Dict[str, Dict[str, Any]],
     ]:
         """
-        Step all `M` vectorised environment groups simultaneously.
+        Step all env types simultaneously.
 
         Parameters
         ----------
-        states : List[EnvState]
-            Per-group batched states from a previous reset or step
-        actions : List[jax.Array]
-            Per-group batched actions
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched states from a previous reset or step.
+        actions : Dict[str, jax.Array]
+            Per-env-type batched actions.
 
         Returns
         -------
-        observations : List[jax.Array]
-            Per-group batched observations after the step
-        new_states : List[EnvState]
-            Per-group updated batched states
-        rewards : List[jax.Array]
-            Per-group batched rewards
-        dones : List[jax.Array]
-            Per-group batched terminal flags
-        infos : List[Dict[str, Any]]
-            Per-group batched info dicts
+        obs : Dict[str, jax.Array]
+            Per-env-type batched observations after the step.
+        new_states : Dict[str, chex.ArrayTree]
+            Per-env-type updated batched states.
+        rewards : Dict[str, jax.Array]
+            Per-env-type batched rewards.
+        dones : Dict[str, jax.Array]
+            Per-env-type batched terminal flags.
+        infos : Dict[str, Dict[str, Any]]
+            Per-env-type batched info dicts.
 
         Raises
         ------
-        length_mismatch : ValueError
-            If `len(states)` or `len(actions)` does not match `num_envs`.
+        key_mismatch : ValueError
+            If `states` or `actions` keys do not match `env_keys`.
         """
-        if len(states) != self.num_envs or len(actions) != self.num_envs:
+        if set(states.keys()) != set(self._keys):
             raise ValueError(
-                f"MultiVecEnv.step: expected {self.num_envs} states and actions, "
-                f"got {len(states)} states and {len(actions)} actions."
+                f"MultiVecEnv.step: `states` keys {sorted(states.keys())} "
+                f"do not match env keys {sorted(self._keys)}."
             )
 
-        results = [
-            vec.step(state, action)
-            for vec, state, action in zip(self._vec_envs, states, actions)
-        ]
-        return (
-            [r[0] for r in results],
-            [r[1] for r in results],
-            [r[2] for r in results],
-            [r[3] for r in results],
-            [r[4] for r in results],
-        )
+        if set(actions.keys()) != set(self._keys):
+            raise ValueError(
+                f"MultiVecEnv.step: `actions` keys {sorted(actions.keys())} "
+                f"do not match env keys {sorted(self._keys)}."
+            )
 
-    def reset_at(self, idx: int, rng: chex.PRNGKey) -> Tuple[jax.Array, EnvState]:
-        """
-        Reset a single `VecEnv` group by index.
+        return self._jit_step(states, actions)
 
-        Parameters
-        ----------
-        idx : int
-            Index of the `VecEnv` group to reset
-        rng : chex.PRNGKey
-            JAX PRNG key
-
-        Returns
-        -------
-        obs : jax.Array
-            Batched initial observations for this group
-        state : EnvState
-            Batched initial state for this group
-        """
-        return self._vec_envs[idx].reset(rng)
-
-    def step_at(
+    def _step_impl(
         self,
-        idx: int,
-        state: EnvState,
-        action: jax.Array,
-    ) -> Tuple[jax.Array, EnvState, jax.Array, jax.Array, Dict[str, Any]]:
+        states: Dict[str, chex.ArrayTree],
+        actions: Dict[str, jax.Array],
+    ) -> Tuple[
+        Dict[str, jax.Array],
+        Dict[str, chex.ArrayTree],
+        Dict[str, jax.Array],
+        Dict[str, jax.Array],
+        Dict[str, Dict[str, Any]],
+    ]:
         """
-        Step a single `VecEnv` group by index.
+        Unjitted body of `step`. Wrapped by `self._jit_step` in `__init__`.
+
+        Traces each inner env's `step` into the same XLA computation at jit
+        time — the Python loop over `self._keys` unrolls at tracing, not at
+        runtime.
 
         Parameters
         ----------
-        idx : int
-            Index of the `VecEnv` group to step
-        state : EnvState
-            Batched state for this group
-        action : jax.Array
-            Batched action for this group
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched states from a previous reset or step.
+        actions : Dict[str, jax.Array]
+            Per-env-type batched actions.
 
         Returns
         -------
-        obs : jax.Array
-            Batched observations after the step
-        new_state : EnvState
-            Updated batched state
-        reward : jax.Array
-            Batched rewards
-        done : jax.Array
-            Batched terminal flags
-        info : Dict[str, Any]
-            Batched info dict
+        obs : Dict[str, jax.Array]
+            Per-env-type batched observations after the step.
+        new_states : Dict[str, chex.ArrayTree]
+            Per-env-type updated batched states.
+        rewards : Dict[str, jax.Array]
+            Per-env-type batched rewards.
+        dones : Dict[str, jax.Array]
+            Per-env-type batched terminal flags.
+        infos : Dict[str, Dict[str, Any]]
+            Per-env-type batched info dicts.
         """
-        return self._vec_envs[idx].step(state, action)
+        obs: Dict[str, jax.Array] = {}
+        new_states: Dict[str, chex.ArrayTree] = {}
+        rewards: Dict[str, jax.Array] = {}
+        dones: Dict[str, jax.Array] = {}
+        infos: Dict[str, Dict[str, Any]] = {}
 
-    def compile(self, *, progress: bool = True) -> None:
+        for key in self._keys:
+            o, s, r, d, info = self._envs[key].step(states[key], actions[key])
+            obs[key] = o
+            new_states[key] = s
+            rewards[key] = r
+            dones[key] = d
+            infos[key] = info
+
+        return obs, new_states, rewards, dones, infos
+
+    def slot_state(
+        self, states: Dict[str, chex.ArrayTree], key: str, slot_idx: int
+    ) -> chex.ArrayTree:
         """
-        Trigger XLA compilation for all inner `VecEnv` instances.
-
-        Calls `compile()` on each `VecEnv`, which runs a dummy
-        `reset` + `step` to populate the XLA cache.
+        Extract the single-slot state pytree for one agent.
 
         Parameters
         ----------
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched states.
+        key : str
+            Env-type key in `env_keys`.
+        slot_idx : int
+            Slot index in `[0, slots_per_env[key])`.
+
+        Returns
+        -------
+        single_state : chex.ArrayTree
+            Unbatched state pytree for the chosen slot.
+        """
+        return self._envs[key].slot_state(states[key], slot_idx)
+
+    def render_slot(
+        self, states: Dict[str, chex.ArrayTree], key: str, slot_idx: int
+    ) -> np.ndarray:
+        """
+        Render a single slot as an RGB frame.
+
+        Parameters
+        ----------
+        states : Dict[str, chex.ArrayTree]
+            Per-env-type batched states.
+        key : str
+            Env-type key in `env_keys`.
+        slot_idx : int
+            Slot index in `[0, slots_per_env[key])`.
+
+        Returns
+        -------
+        frame : np.ndarray
+            uint8 RGB array of shape `(H, W, 3)`.
+        """
+        return self._envs[key].render_slot(states[key], slot_idx)
+
+    def compile(
+        self,
+        cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+        *,
+        progress: bool = True,
+    ) -> None:
+        """
+        Trigger XLA compilation for all inner envs and warm the multi-step jit.
+
+        Parameters
+        ----------
+        cache_dir : Path | str | None (optional)
+            XLA cache directory. Defaults to `<cwd>/.jax_cache`.
         progress : bool (optional)
             Show a `tqdm` progress bar. Default is `True`.
         """
+        setup_cache(cache_dir)
+
         it = (
-            tqdm(self._vec_envs, desc="Compiling vec envs", unit="env")
+            tqdm(self._envs.items(), desc="Compiling batched envs", unit="env")
             if progress
-            else self._vec_envs
+            else self._envs.items()
         )
-        for vec in it:
-            vec.compile()
+        for _, env in it:
+            env.compile(cache_dir=cache_dir)
+
+        _rng = jax.random.key(0)
+        _obs, _states = self.reset(_rng)
+        _action_keys = jax.random.split(_rng, len(self._keys))
+        _dummy_actions = {
+            k: jax.vmap(self._envs[k].single_action_space.sample)(
+                jax.random.split(_action_keys[i], self._envs[k].n_slots)
+            )
+            for i, k in enumerate(self._keys)
+        }
+        self.step(_states, _dummy_actions)
 
     def __len__(self) -> int:
-        return len(self._vec_envs)
+        return self.n_envs
 
     def __repr__(self) -> str:
         group_info = ", ".join(
-            f"{type(v.env).__name__}×{v.num_envs}" for v in self._vec_envs
+            f"{k}*{e.n_slots}" for k, e in self._envs.items()
         )
-        return f"MultiVecEnv([{group_info}], total={self.total_envs})"
+        return f"MultiVecEnv({{{group_info}}}, total_slots={self.total_slots})"
